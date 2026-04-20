@@ -18,6 +18,10 @@ pnpm-debug.log*
 # Env & secrets
 .env
 .env.local
+
+# Agent artifacts (pi-memory daily notes)
+memory/
+.pi/
 .env.*.local
 !.env.example
 

@@ -1,5 +1,5 @@
 import { schema, type Database } from "@lwa/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 export type CreateTenantInput = {
   tenantName: string;
@@ -14,12 +14,20 @@ export type CreateTenantResult = {
   membership: { id: string; userId: string; tenantId: string; role: "network_admin" };
 };
 
+/**
+ * Normalize a slug candidate: lowercase, replace non-alphanumeric runs with "-",
+ * trim leading/trailing "-". Applied to both auto-derived and explicit slugs
+ * so behavior is consistent across both paths.
+ */
+export function normalizeSlug(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
 export async function createTenantAndAdmin(
   db: Database,
   input: CreateTenantInput,
 ): Promise<CreateTenantResult> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (db as any).transaction(async (tx: Database) => {
+  return db.transaction(async (tx) => {
     const existing = await tx.query.tenant.findFirst({
       where: eq(schema.tenant.slug, input.tenantSlug),
     });
@@ -31,12 +39,18 @@ export async function createTenantAndAdmin(
       .returning();
     if (!tenantRow) throw new Error("tenant insert failed");
 
-    let userRow = await tx.query.user.findFirst({ where: eq(schema.user.email, input.adminEmail) });
+    // Emails are case-insensitive per RFC 5321 local-part MAY be, but domain MUST be.
+    // We normalize to lowercase everywhere to avoid "Admin@X.com" vs "admin@x.com"
+    // creating duplicate users on the unique(email) constraint.
+    const normalizedEmail = input.adminEmail.toLowerCase();
+    let userRow = await tx.query.user.findFirst({
+      where: sql`lower(${schema.user.email}) = ${normalizedEmail}`,
+    });
     if (!userRow) {
       const [inserted] = await tx
         .insert(schema.user)
         .values({
-          email: input.adminEmail,
+          email: normalizedEmail,
           name: input.adminName,
           emailVerified: true,
         })
@@ -70,39 +84,51 @@ export async function createTenantAndAdmin(
 
 // CLI entrypoint: `pnpm admin:create-tenant --name <name> --slug <slug> --admin-email <email> --admin-name <name>`
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const { createDb } = await import("@lwa/db");
-  const parseArg = (flag: string): string | undefined => {
-    const idx = process.argv.indexOf(flag);
-    return idx >= 0 ? process.argv[idx + 1] : undefined;
-  };
+  try {
+    const { createDb } = await import("@lwa/db");
+    const parseArg = (flag: string): string | undefined => {
+      const idx = process.argv.indexOf(flag);
+      return idx >= 0 ? process.argv[idx + 1] : undefined;
+    };
 
-  const name = parseArg("--name");
-  const slug = parseArg("--slug") ?? name?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-  const adminEmail = parseArg("--admin-email");
-  const adminName = parseArg("--admin-name") ?? "Admin";
+    const name = parseArg("--name");
+    const rawSlug = parseArg("--slug") ?? name;
+    const slug = rawSlug ? normalizeSlug(rawSlug) : undefined;
+    const adminEmail = parseArg("--admin-email");
+    const adminName = parseArg("--admin-name") ?? "Admin";
 
-  if (!name || !slug || !adminEmail) {
-    console.error("Usage: pnpm admin:create-tenant --name <name> [--slug <slug>] --admin-email <email> [--admin-name <name>]");
+    if (!name || !slug || !adminEmail) {
+      console.error(
+        "Usage: pnpm admin:create-tenant --name <name> [--slug <slug>] --admin-email <email> [--admin-name <name>]",
+      );
+      process.exit(1);
+    }
+
+    const url = process.env.DATABASE_URL;
+    if (!url) {
+      console.error("DATABASE_URL env var required");
+      process.exit(1);
+    }
+
+    const db = createDb(url);
+    const result = await createTenantAndAdmin(db, {
+      tenantName: name,
+      tenantSlug: slug,
+      adminEmail,
+      adminName,
+    });
+
+    console.log("✓ Created:");
+    console.log(`  Tenant   : ${result.tenant.name} (${result.tenant.slug})`);
+    console.log(`  Admin    : ${result.user.email}`);
+    console.log("");
+    console.log("Next: enable admin login (manual step for Phase 0)");
+    console.log("  The user row exists but has no password credential in Better Auth's");
+    console.log("  'account' table. See docs/runbooks/onboarding.md (added in Task 10)");
+    console.log("  for detailed instructions.");
+    process.exit(0);
+  } catch (e) {
+    console.error(`✗ Failed: ${e instanceof Error ? e.message : String(e)}`);
     process.exit(1);
   }
-
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    console.error("DATABASE_URL env var required");
-    process.exit(1);
-  }
-
-  const db = createDb(url);
-  const result = await createTenantAndAdmin(db, {
-    tenantName: name,
-    tenantSlug: slug,
-    adminEmail,
-    adminName,
-  });
-  console.log("✓ Created:");
-  console.log(`  Tenant   : ${result.tenant.name} (${result.tenant.slug})`);
-  console.log(`  Admin    : ${result.user.email}`);
-  console.log("Next step: the admin user has no password yet. Run Better Auth's reset-password flow");
-  console.log("or update the password directly via Better Auth API to allow login.");
-  process.exit(0);
 }

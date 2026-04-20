@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./src/schema/index.ts",
-    "./repositories/*": "./src/repositories/*.ts"
+    "./repositories/*": "./src/repositories/*.ts",
+    "./test-utils": "./src/test-utils.ts"
   },
   "scripts": {
     "build": "tsc -b",
