@@ -104,6 +104,25 @@ importers:
         specifier: ^1.6.0
         version: 1.6.1(@types/node@22.19.17)(lightningcss@1.32.0)
 
+  packages/connectors:
+    dependencies:
+      '@lwa/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
+    devDependencies:
+      '@lwa/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: ^22.5.0
+        version: 22.19.17
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@22.19.17)(lightningcss@1.32.0)
+
   packages/contracts:
     dependencies:
       zod:
@@ -223,6 +242,9 @@ importers:
 
   services/ingestion:
     dependencies:
+      '@lwa/connectors':
+        specifier: workspace:*
+        version: link:../../packages/connectors
       '@lwa/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

@@ -13,18 +13,25 @@ export type PlatformAccountCandidate = {
   thumbnailUrl?: string;
 };
 
+export type ConnectorRuntimeConfig = {
+  id: string;
+  tenantId: string;
+  sourceId: string;
+  sourceKey: string;
+  credentials: unknown;
+  schedule: string;
+};
+
+export type PlatformAccountRuntime = {
+  id: string;
+  externalId: string;
+  hierarchyNodeId: string;
+  config: Record<string, unknown>;
+};
+
 export type PullInput = {
-  config: {
-    id: string;
-    tenantId: string;
-    credentials: unknown;
-    schedule: string;
-  };
-  account: {
-    id: string;
-    externalId: string;
-    hierarchyNodeId: string;
-  } | null;
+  config: ConnectorRuntimeConfig;
+  account: PlatformAccountRuntime | null;
   period: {
     start: Date;
     end: Date;
