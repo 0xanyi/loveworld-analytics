@@ -29,12 +29,38 @@ function advance(d: Date, g: Granularity): Date {
       r.setUTCDate(r.getUTCDate() + 7);
       return r;
     case "month":
-      r.setUTCMonth(r.getUTCMonth() + 1);
-      return r;
+      return addUtcMonths(r, 1);
     case "quarter":
-      r.setUTCMonth(r.getUTCMonth() + 3);
-      return r;
+      return addUtcMonths(r, 3);
   }
+}
+
+function addUtcMonths(d: Date, months: number): Date {
+  const year = d.getUTCFullYear();
+  const month = d.getUTCMonth();
+  const day = d.getUTCDate();
+
+  const targetMonthIndex = month + months;
+  const targetYear = year + Math.floor(targetMonthIndex / 12);
+  const targetMonth = ((targetMonthIndex % 12) + 12) % 12;
+  const maxDay = daysInUtcMonth(targetYear, targetMonth);
+  const targetDay = Math.min(day, maxDay);
+
+  return new Date(
+    Date.UTC(
+      targetYear,
+      targetMonth,
+      targetDay,
+      d.getUTCHours(),
+      d.getUTCMinutes(),
+      d.getUTCSeconds(),
+      d.getUTCMilliseconds(),
+    ),
+  );
+}
+
+function daysInUtcMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
 }
 
 export function weekBucketStart(d: Date): Date {

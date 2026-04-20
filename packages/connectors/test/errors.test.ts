@@ -23,6 +23,11 @@ describe("classifyNetworkError", () => {
     );
   });
 
+  it("UPSTREAM_UNAVAILABLE when code field is present", () => {
+    const err = Object.assign(new Error("socket hang up"), { code: "ECONNRESET" });
+    expect(classifyNetworkError(err).code).toBe("UPSTREAM_UNAVAILABLE");
+  });
+
   it("TRANSIENT on unknown error", () => {
     expect(classifyNetworkError(new Error("whatever")).code).toBe("TRANSIENT");
   });
