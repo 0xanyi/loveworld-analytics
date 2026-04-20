@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
-import { cors } from "hono/cors";
 import type { Auth } from "@lwa/auth";
 import { requireSession } from "@lwa/auth";
 import { healthRoutes } from "./routes/health";
@@ -11,21 +10,17 @@ export type AppDeps = {
   auth?: Auth;
 };
 
+// CORS is intentionally NOT mounted in Phase 0:
+// - No browser-origin frontend exists yet (Task 8 adds SvelteKit).
+// - A permissive default (`origin: *` + `credentials: true`) reflected with
+//   the request Origin is a CSRF superhighway if it survives into prod.
+// - Task 8 will add env-driven CORS with an explicit ALLOWED_ORIGINS allowlist.
+// Better Auth enforces its own Origin check on mutation endpoints, so auth
+// flows remain CSRF-safe even without app-level CORS.
 export function buildApp(deps: AppDeps = {}): Hono {
   const app = new Hono();
 
   app.use("*", logger());
-  // NOTE: reflecting the request Origin with credentials=true is intentional
-  // for Phase 0 local dev but is NOT safe for production — any site a logged-in
-  // user visits could forge authenticated requests. Replace with an explicit
-  // allowlist (driven by env.ALLOWED_ORIGINS) in Task 8/Phase 1 before shipping.
-  app.use(
-    "*",
-    cors({
-      origin: (origin) => origin ?? "*",
-      credentials: true,
-    }),
-  );
 
   app.route("/", healthRoutes);
 

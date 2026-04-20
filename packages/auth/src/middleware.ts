@@ -14,13 +14,25 @@ export type TenantContext = {
 };
 
 /**
- * Minimal session shape stored on the Hono context. We intentionally do NOT
- * widen to Better Auth's full session type because it transitively references
- * zod@4 internals via Better Auth's plugin inference, which is not portably
- * nameable in a .d.ts (TS2742). Downstream middleware only reads `user.id`.
+ * Session shape stored on the Hono context. We hand-roll this rather than
+ * widening to Better Auth's full inferred session type — Better Auth's types
+ * transitively reference zod@4 internals that are not portably nameable in a
+ * .d.ts (TS2742). The fields below are the subset we actually use across
+ * middleware and API routes; Better Auth's richer runtime session assigns
+ * into this slot via structural compatibility.
  */
 export type SessionContext = {
-  user: { id: string; email?: string };
+  user: {
+    id: string;
+    email: string;
+    emailVerified: boolean;
+    name: string;
+    image?: string | null;
+    // Better Auth's plugin-inferred session.user types `twoFactorEnabled`
+    // as `boolean | null | undefined`; match that here so assignment from
+    // the richer Better Auth session compiles.
+    twoFactorEnabled?: boolean | null;
+  };
 };
 
 declare module "hono" {
