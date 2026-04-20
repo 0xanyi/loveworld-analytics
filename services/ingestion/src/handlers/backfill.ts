@@ -1,9 +1,15 @@
 import type { Job } from "bullmq";
 import type { BackfillJobData } from "../queues";
+import { logger } from "../lib/logger";
 
 export function backfillHandler(job: Job<BackfillJobData>): Promise<void> {
-  console.log(
-    `[backfill] job=${job.id} run=${job.data.backfillRunId} chunk=${job.data.chunkIndex}`,
+  logger.info(
+    {
+      jobId: job.id,
+      backfillRunId: job.data.backfillRunId,
+      chunkIndex: job.data.chunkIndex,
+    },
+    "backfill",
   );
   return Promise.resolve();
 }

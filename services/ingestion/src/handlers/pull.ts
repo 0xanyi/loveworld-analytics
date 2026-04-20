@@ -1,6 +1,7 @@
 import type { Job } from "bullmq";
 import type { PullJobData } from "../queues";
 import type { ConnectorRegistry } from "../registry";
+import { logger } from "../lib/logger";
 
 /**
  * Phase 0: empty registry means no connectors to run; we log and succeed.
@@ -13,8 +14,13 @@ import type { ConnectorRegistry } from "../registry";
  */
 export function createPullHandler(registry: ConnectorRegistry) {
   return function pullHandler(job: Job<PullJobData>): Promise<void> {
-    console.log(
-      `[pull] job=${job.id} config=${job.data.connectorConfigId} — registry size ${registry.size()}`,
+    logger.info(
+      {
+        jobId: job.id,
+        connectorConfigId: job.data.connectorConfigId,
+        registrySize: registry.size(),
+      },
+      "pull",
     );
     return Promise.resolve();
   };
