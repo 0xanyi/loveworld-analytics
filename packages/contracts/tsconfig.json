@@ -1,0 +1,7 @@
+{
+  "extends": "@lwa/tsconfig/node",
+  "compilerOptions": {
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*", "test/**/*"]
+}
