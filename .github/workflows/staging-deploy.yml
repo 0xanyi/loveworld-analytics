@@ -9,7 +9,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check Dokploy configured
+        id: check
+        env:
+          WEBHOOK: ${{ secrets.DOKPLOY_STAGING_WEBHOOK }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::DOKPLOY_STAGING_WEBHOOK secret not set; skipping deploy."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Trigger Dokploy staging deploy
+        if: steps.check.outputs.configured == 'true'
         run: |
           curl -fsS -X POST \
             -H "Authorization: Bearer ${{ secrets.DOKPLOY_STAGING_TOKEN }}" \
