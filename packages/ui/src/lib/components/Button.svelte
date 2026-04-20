@@ -32,6 +32,10 @@
   };
 </script>
 
-<button class={cn(base, variants[variant], sizes[size], className)} {...rest}>
+<!-- type="button" is declared before {...rest} so consumers can override
+     via <Button type="submit">; later-declared wins in Svelte's spread. This
+     stops the component from accidentally submitting a parent <form> — the
+     native HTML default for <button> with no type is "submit" inside a form. -->
+<button type="button" class={cn(base, variants[variant], sizes[size], className)} {...rest}>
   {@render children?.()}
 </button>

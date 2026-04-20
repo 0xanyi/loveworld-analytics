@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "svelte-check --tsconfig ./tsconfig.json",
     "lint": "eslint src"
   },
   "peerDependencies": {
@@ -23,6 +23,7 @@
   "devDependencies": {
     "@lwa/tsconfig": "workspace:*",
     "svelte": "^5.0.0",
+    "svelte-check": "^4.0.0",
     "@types/node": "^22.5.0"
   }
 }
