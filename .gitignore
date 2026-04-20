@@ -19,8 +19,9 @@ pnpm-debug.log*
 .env
 .env.local
 
-# Agent artifacts (pi-memory daily notes)
+# Agent artifacts (pi-memory daily notes + long-term memory)
 memory/
+MEMORY.md
 .pi/
 .env.*.local
 !.env.example

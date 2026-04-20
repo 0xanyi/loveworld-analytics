@@ -26,7 +26,30 @@
      --admin-name "Admin Name"
    ```
 
-2. **Send password setup** — the new admin receives a reset-password email via Better Auth's flow.
+2. **Enable admin login** — *Phase 0 manual workaround*:
+
+   The admin CLI in Phase 0 creates a `user` row but not Better Auth's
+   `account` credential row, so the admin cannot yet log in via password.
+   Until Phase 1 adds a `--password` flag to `admin:create-tenant` or a
+   Better Auth self-service setup flow:
+
+   - Generate a bcrypt-compatible hash for the admin's chosen password (see
+     Better Auth's docs for the expected format).
+   - Insert the account row directly via psql:
+
+     ```sql
+     INSERT INTO account (id, user_id, provider_id, account_id, password)
+     VALUES (
+       gen_random_uuid(),
+       '<user-id-from-step-1>',
+       'credential',
+       '<user-id-from-step-1>',
+       '<bcrypt-hash>'
+     );
+     ```
+
+   Then the admin can log in at `/login` with email + password. This step
+   will be replaced by `pnpm admin:set-password` in Phase 1.
 
 3. **Seed hierarchy** — admin logs in, navigates to `/<tenant>/settings/hierarchy`, and builds the tree (Phase 1 UI) or the platform owner runs the bulk-import CLI (Phase 4).
 

@@ -25,9 +25,13 @@
   - `instagram_basic` — link IG Business Account
   - `instagram_manage_insights` — read IG Insights
   - `business_management` — access business-managed assets
-- [ ] OAuth redirect URIs registered:
-  - `https://api.staging.loveworld-analytics.example/auth/callback/meta`
-  - `https://api.loveworld-analytics.example/auth/callback/meta`
+- [ ] OAuth redirect URIs registered (Better Auth mounts at `/api/auth/*`,
+      so callback path is `/api/auth/callback/meta`):
+  - `https://api.staging.loveworld-analytics.example/api/auth/callback/meta`
+  - `https://api.loveworld-analytics.example/api/auth/callback/meta`
+
+  > **Note**: Replace `.example` TLD (RFC 2606 placeholder) with the
+  > registered production domains before submission to Meta.
 - [ ] Privacy policy URL live and linked
 - [ ] Data deletion URL live and linked
 - [ ] App icon (1024×1024 PNG) uploaded

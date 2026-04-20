@@ -4,7 +4,7 @@ version: "3.9"
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.4-alpine
     environment:
       POSTGRES_USER_FILE: /run/secrets/pg_user
       POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
@@ -14,14 +14,26 @@ services:
     secrets:
       - pg_user
       - pg_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$(cat /run/secrets/pg_user) -d lwa_staging"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   api:
-    image: ghcr.io/0xanyi/loveworld-analytics-api:${DEPLOY_SHA}
+    image: ghcr.io/0xanyi/loveworld-analytics-api:${DEPLOY_SHA:?DEPLOY_SHA must be set}
     environment:
       NODE_ENV: staging
       DATABASE_URL_FILE: /run/secrets/database_url
@@ -39,13 +51,23 @@ services:
     depends_on:
       - postgres
       - redis
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     deploy:
       replicas: 2
       update_config: { order: start-first, parallelism: 1, failure_action: rollback }
-      restart_policy: { condition: on-failure }
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+        delay: 5s
+        window: 120s
 
   ingestion:
-    image: ghcr.io/0xanyi/loveworld-analytics-ingestion:${DEPLOY_SHA}
+    image: ghcr.io/0xanyi/loveworld-analytics-ingestion:${DEPLOY_SHA:?DEPLOY_SHA must be set}
     environment:
       NODE_ENV: staging
       DATABASE_URL_FILE: /run/secrets/database_url
@@ -61,18 +83,32 @@ services:
       - redis
     deploy:
       replicas: 1
-      restart_policy: { condition: on-failure }
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+        delay: 5s
+        window: 120s
 
   web:
-    image: ghcr.io/0xanyi/loveworld-analytics-web:${DEPLOY_SHA}
+    image: ghcr.io/0xanyi/loveworld-analytics-web:${DEPLOY_SHA:?DEPLOY_SHA must be set}
     environment:
       NODE_ENV: staging
       PORT: "3000"
       VITE_API_BASE_URL: https://api.staging.loveworld-analytics.example
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/login || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     deploy:
       replicas: 2
       update_config: { order: start-first, parallelism: 1, failure_action: rollback }
-      restart_policy: { condition: on-failure }
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+        delay: 5s
+        window: 120s
 
 secrets:
   pg_user:       { external: true }

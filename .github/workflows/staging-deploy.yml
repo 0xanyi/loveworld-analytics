@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
 
+# Read-only — we only checkout + call an external webhook.
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
