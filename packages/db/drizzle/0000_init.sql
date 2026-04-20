@@ -44,9 +44,13 @@ CREATE TABLE IF NOT EXISTS "account" (
 	"account_id" text NOT NULL,
 	"access_token" text,
 	"refresh_token" text,
-	"expires_at" timestamp with time zone,
+	"access_token_expires_at" timestamp with time zone,
+	"refresh_token_expires_at" timestamp with time zone,
+	"scope" text,
+	"id_token" text,
 	"password" text,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "session" (
@@ -57,6 +61,7 @@ CREATE TABLE IF NOT EXISTS "session" (
 	"ip_address" text,
 	"user_agent" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "session_token_unique" UNIQUE("token")
 );
 --> statement-breakpoint
@@ -75,6 +80,7 @@ CREATE TABLE IF NOT EXISTS "user" (
 	"email_verified" boolean DEFAULT false NOT NULL,
 	"name" text NOT NULL,
 	"image" text,
+	"two_factor_enabled" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "user_email_unique" UNIQUE("email")
@@ -85,7 +91,8 @@ CREATE TABLE IF NOT EXISTS "verification" (
 	"identifier" text NOT NULL,
 	"value" text NOT NULL,
 	"expires_at" timestamp with time zone NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "tenant_membership" (

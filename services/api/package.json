@@ -1,0 +1,32 @@
+{
+  "name": "@lwa/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/server.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src test",
+    "test": "vitest run",
+    "admin:create-tenant": "tsx src/admin/create-tenant.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.0",
+    "@hono/zod-openapi": "^0.16.0",
+    "@lwa/auth": "workspace:*",
+    "@lwa/contracts": "workspace:*",
+    "@lwa/db": "workspace:*",
+    "hono": "^4.6.0",
+    "pino": "^9.4.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@lwa/tsconfig": "workspace:*",
+    "@types/node": "^22.5.0",
+    "tsx": "^4.19.0",
+    "vitest": "^1.6.0"
+  }
+}
