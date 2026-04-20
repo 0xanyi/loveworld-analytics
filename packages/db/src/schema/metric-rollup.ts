@@ -58,7 +58,11 @@ export const metricRollup = pgTable(
     computedAt: timestamp("computed_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
+    // Explicit name — the default-generated composite PK name exceeds
+    // Postgres's 63-char identifier limit and gets silently truncated,
+    // emitting a NOTICE on every migrate run.
     pk: primaryKey({
+      name: "metric_rollup_pk",
       columns: [t.tenantId, t.hierarchyNodeId, t.metricCategory, t.granularity, t.bucketStart],
     }),
   }),

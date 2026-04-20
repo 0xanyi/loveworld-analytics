@@ -35,6 +35,7 @@ describe("metricRollupRepo", () => {
       hierarchyNodeId: ctx.stationId,
       metricCategory: "web_visitors",
       granularity: "week",
+      recordGranularity: "day",
       bucketStart: new Date("2026-01-05T00:00:00Z"),
       bucketEnd: new Date("2026-01-12T00:00:00Z"),
     });
@@ -62,6 +63,7 @@ describe("metricRollupRepo", () => {
       hierarchyNodeId: ctx.langId,
       metricCategory: "web_visitors",
       granularity: "week",
+      recordGranularity: "day",
       bucketStart: new Date("2026-01-05T00:00:00Z"),
       bucketEnd: new Date("2026-01-12T00:00:00Z"),
     });
@@ -81,6 +83,7 @@ describe("metricRollupRepo", () => {
       hierarchyNodeId: ctx.stationId,
       metricCategory: "web_visitors" as const,
       granularity: "week" as const,
+      recordGranularity: "day" as const,
       bucketStart: new Date("2026-01-05T00:00:00Z"),
       bucketEnd: new Date("2026-01-12T00:00:00Z"),
     };
@@ -102,6 +105,7 @@ describe("metricRollupRepo", () => {
       hierarchyNodeId: ctx.stationId,
       metricCategory: "web_visitors",
       granularity: "week",
+      recordGranularity: "day",
       bucketStart: new Date("2027-06-01T00:00:00Z"),
       bucketEnd: new Date("2027-06-08T00:00:00Z"),
     });
@@ -129,6 +133,54 @@ describe("metricRollupRepo", () => {
     const repo = metricRollupRepo(db);
     const ancestors = await repo.getAncestors(ctx.tenantId, ctx.stationId);
     expect(ancestors).toEqual([ctx.stationId]);
+  });
+
+  it("refreshBucket filters by recordGranularity — ignores records at other granularities", async () => {
+    const ctx = await seedTree();
+    // Add an hour record in the same window. Without the recordGranularity
+    // filter, this would double-count with the existing day records.
+    const suffix = crypto.randomUUID().slice(0, 8);
+    const [hourSrc] = await db
+      .insert(schema.source)
+      .values({ key: `hr-${suffix}`, name: "hr", category: "web", authMethod: "none" })
+      .returning();
+    const [hourCfg] = await db
+      .insert(schema.connectorConfig)
+      .values({ tenantId: ctx.tenantId, sourceId: hourSrc!.id, schedule: "" })
+      .returning();
+    await db.insert(schema.metricRecord).values({
+      tenantId: ctx.tenantId,
+      sourceId: hourSrc!.id,
+      connectorConfigId: hourCfg!.id,
+      hierarchyNodeId: ctx.langId,
+      metricType: "page_views",
+      metricCategory: "web_visitors",
+      dimensions: {},
+      dimensionsHash: hashDimensions({}),
+      periodStart: new Date("2026-01-05T10:00:00Z"),
+      periodEnd: new Date("2026-01-05T11:00:00Z"),
+      granularity: "hour",
+      rawValue: "999",
+      unit: "count",
+      provenance: `connector:${hourCfg!.id}`,
+    });
+    const repo = metricRollupRepo(db);
+    await repo.refreshBucket({
+      tenantId: ctx.tenantId,
+      hierarchyNodeId: ctx.stationId,
+      metricCategory: "web_visitors",
+      granularity: "week",
+      recordGranularity: "day",
+      bucketStart: new Date("2026-01-05T00:00:00Z"),
+      bucketEnd: new Date("2026-01-12T00:00:00Z"),
+    });
+    const rows = await db.execute<{ effective_total: string; record_count: number }>(sql`
+      SELECT effective_total, record_count FROM metric_rollup
+      WHERE hierarchy_node_id = ${ctx.stationId}::uuid
+    `);
+    // Day records only: 100 + 200 = 300. The hour record's 999 is excluded.
+    expect(Number(rows[0]!.effective_total)).toBe(300);
+    expect(rows[0]!.record_count).toBe(2);
   });
 });
 

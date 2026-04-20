@@ -29,6 +29,10 @@ export const ingestionRun = pgTable(
     finishedAt: timestamp("finished_at", { withTimezone: true }),
     status: ingestionRunStatusEnum("status").default("pending").notNull(),
     recordsWritten: integer("records_written").default(0).notNull(),
+    // int max = 2^31 ms = ~24.8 days. Pull runs are minutes at most; backfill
+    // chunks are weekly at most and capped by connector timeouts. If we ever
+    // see a realistic run approaching 24 days, switch to bigint (the migration
+    // is a single ALTER COLUMN).
     durationMs: integer("duration_ms"),
     errorCode: text("error_code"),
     errorMessage: text("error_message"),

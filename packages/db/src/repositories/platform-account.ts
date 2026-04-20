@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { platformAccount, type PlatformAccount } from "../schema";
 
@@ -6,9 +6,10 @@ export interface PlatformAccountRepo {
   listByConnector(tenantId: string, sourceId: string): Promise<PlatformAccount[]>;
 
   /**
-   * Insert-or-update keyed on (tenant, source, external_id). The connector
-   * registry re-invokes `listAccounts` periodically; this repo lets the API
-   * refresh display names / configs without creating duplicates.
+   * Insert-or-update keyed on (tenant, source, external_id). When `config` is
+   * omitted, the stored value is preserved — a caller refreshing only the
+   * display name will not wipe per-account settings. Pass `config: {}`
+   * explicitly to clear.
    */
   upsert(input: {
     tenantId: string;
@@ -35,6 +36,17 @@ export function platformAccountRepo(db: Database): PlatformAccountRepo {
     },
 
     async upsert(input) {
+      // Only set config on conflict when the caller provided one. Drizzle's
+      // onConflictDoUpdate uses `excluded.*` to refer to the attempted-insert
+      // row, so we build the set dynamically.
+      const conflictSet: Record<string, unknown> = {
+        displayName: sql`excluded.display_name`,
+        hierarchyNodeId: sql`excluded.hierarchy_node_id`,
+      };
+      if (input.config !== undefined) {
+        conflictSet.config = sql`excluded.config`;
+      }
+
       const [row] = await db
         .insert(platformAccount)
         .values({
@@ -43,18 +55,20 @@ export function platformAccountRepo(db: Database): PlatformAccountRepo {
           sourceId: input.sourceId,
           externalId: input.externalId,
           displayName: input.displayName,
+          // On INSERT, default to {} when config is omitted; jsonb column is NOT NULL.
           config: input.config ?? {},
         })
         .onConflictDoUpdate({
           target: [platformAccount.tenantId, platformAccount.sourceId, platformAccount.externalId],
-          set: {
-            displayName: input.displayName,
-            config: input.config ?? {},
-            hierarchyNodeId: input.hierarchyNodeId,
-          },
+          set: conflictSet,
         })
         .returning();
-      return row!;
+      if (!row) {
+        throw new Error(
+          `platformAccountRepo.upsert: insert returned no row for (tenant=${input.tenantId}, source=${input.sourceId}, external=${input.externalId})`,
+        );
+      }
+      return row;
     },
 
     async updateLastSynced(id) {

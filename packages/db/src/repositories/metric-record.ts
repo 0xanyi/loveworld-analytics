@@ -14,14 +14,20 @@ export type MetricRecordDraft = Omit<NewMetricRecord, "id" | "dimensionsHash" | 
 /**
  * Canonical hash of a `dimensions` map. Keys are sorted alphabetically before
  * serialisation so `{ a:"1", b:"2" }` and `{ b:"2", a:"1" }` produce the same
- * hash. SHA-256 (not BLAKE3) because Node ships SHA-256 natively — migrating
- * to a faster hash later is a one-off backfill, not a code change.
+ * hash. Values are coerced to strings (via `String(v)`) before hashing so a
+ * connector bug passing a number (`{ country: 123 }`) still hashes to the same
+ * value as the schema-correct `{ country: "123" }` — preserves dedup across
+ * accidental type mismatches.
+ *
+ * SHA-256 (not BLAKE3) because Node ships SHA-256 natively — migrating to a
+ * faster hash later is a one-off backfill, not a code change.
  */
-export function hashDimensions(dims: Record<string, string>): string {
-  const canonical = JSON.stringify(
-    Object.fromEntries(Object.entries(dims).sort(([a], [b]) => a.localeCompare(b))),
-  );
-  return createHash("sha256").update(canonical).digest("hex");
+export function hashDimensions(dims: Record<string, unknown>): string {
+  const normalised: Record<string, string> = {};
+  for (const [k, v] of Object.entries(dims).sort(([a], [b]) => a.localeCompare(b))) {
+    normalised[k] = v == null ? "" : String(v);
+  }
+  return createHash("sha256").update(JSON.stringify(normalised)).digest("hex");
 }
 
 export interface MetricRecordRepo {

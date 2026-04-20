@@ -29,6 +29,13 @@
       "when": 1776722970647,
       "tag": "0003_drop_castnet_events_source",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1776722970648,
+      "tag": "0004_effective_metric_tiebreak",
+      "breakpoints": true
     }
   ]
 }

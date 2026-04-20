@@ -38,7 +38,12 @@ export function ingestionRunRepo(db: Database): IngestionRunRepo {
           bullmqJobId: jobId,
         })
         .returning();
-      return row!;
+      if (!row) {
+        throw new Error(
+          `ingestionRunRepo.start: insert returned no row for connectorConfigId=${connectorConfigId}`,
+        );
+      }
+      return row;
     },
 
     async finish(id, { status, recordsWritten, durationMs, errorCode, errorMessage, warnings }) {

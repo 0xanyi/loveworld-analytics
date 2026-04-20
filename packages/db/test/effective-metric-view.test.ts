@@ -141,6 +141,54 @@ describe("effective_metric view", () => {
     `);
     expect(Number(rows[0]!.effective_value)).toBe(1800);
   });
+
+  it("deterministic tie-break on id when created_at ties (review P1 fix)", async () => {
+    const ctx = await seedBaseRow();
+    // Two adjustments with identical created_at — id DESC decides which wins.
+    const sameInstant = new Date("2026-01-03T12:00:00Z");
+    await db.insert(metricAdjustment).values([
+      {
+        metricRecordId: ctx.recordId,
+        tenantId: ctx.tenantId,
+        adjustmentType: "replace",
+        adjustedValue: "100",
+        reason: "tie A",
+        authorUserId: ctx.userId,
+        status: "applied",
+        createdAt: sameInstant,
+      },
+      {
+        metricRecordId: ctx.recordId,
+        tenantId: ctx.tenantId,
+        adjustmentType: "replace",
+        adjustedValue: "200",
+        reason: "tie B",
+        authorUserId: ctx.userId,
+        status: "applied",
+        createdAt: sameInstant,
+      },
+    ]);
+    const picked = await db.execute<{ applied_adjustment_id: string; effective_value: string }>(sql`
+      SELECT applied_adjustment_id, effective_value FROM effective_metric
+      WHERE metric_record_id = ${ctx.recordId}
+    `);
+    // Query the adjustments sorted by id DESC to discover which one the view should pick.
+    const sortedByIdDesc = await db.execute<{ id: string; adjusted_value: string }>(sql`
+      SELECT id::text, adjusted_value FROM metric_adjustment
+      WHERE metric_record_id = ${ctx.recordId} AND created_at = ${sameInstant.toISOString()}::timestamptz
+      ORDER BY id DESC LIMIT 1
+    `);
+    expect(picked[0]!.applied_adjustment_id).toBe(sortedByIdDesc[0]!.id);
+    expect(Number(picked[0]!.effective_value)).toBe(Number(sortedByIdDesc[0]!.adjusted_value));
+
+    // Repeat the read — must return the same adjustment_id. Guards against
+    // non-determinism that would cause dashboards to flip between refreshes.
+    const again = await db.execute<{ applied_adjustment_id: string }>(sql`
+      SELECT applied_adjustment_id FROM effective_metric
+      WHERE metric_record_id = ${ctx.recordId}
+    `);
+    expect(again[0]!.applied_adjustment_id).toBe(picked[0]!.applied_adjustment_id);
+  });
 });
 
 async function seedBaseRow() {

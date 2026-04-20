@@ -1876,8 +1876,8 @@
         }
       },
       "compositePrimaryKeys": {
-        "metric_rollup_tenant_id_hierarchy_node_id_metric_category_granularity_bucket_start_pk": {
-          "name": "metric_rollup_tenant_id_hierarchy_node_id_metric_category_granularity_bucket_start_pk",
+        "metric_rollup_pk": {
+          "name": "metric_rollup_pk",
           "columns": [
             "tenant_id",
             "hierarchy_node_id",

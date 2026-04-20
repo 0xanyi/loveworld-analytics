@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS "metric_rollup" (
 	"source_breakdown" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"has_adjustments" boolean DEFAULT false NOT NULL,
 	"computed_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "metric_rollup_tenant_id_hierarchy_node_id_metric_category_granularity_bucket_start_pk" PRIMARY KEY("tenant_id","hierarchy_node_id","metric_category","granularity","bucket_start")
+	CONSTRAINT "metric_rollup_pk" PRIMARY KEY("tenant_id","hierarchy_node_id","metric_category","granularity","bucket_start")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "ingestion_run" (
