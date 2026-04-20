@@ -25,15 +25,7 @@ const auth = createAuth({
   },
 });
 
-// In dev, seed the allowlist with SvelteKit's default port if nothing else
-// is configured. In production, operators must set ALLOWED_ORIGINS explicitly
-// (empty allowlist = no CORS = no browser client can talk to us).
-const allowedOrigins =
-  env.ALLOWED_ORIGINS.length > 0
-    ? env.ALLOWED_ORIGINS
-    : env.NODE_ENV === "development"
-      ? ["http://localhost:5173"]
-      : [];
+const allowedOrigins = env.ALLOWED_ORIGINS;
 
 const app = buildApp({ auth, allowedOrigins });
 

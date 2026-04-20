@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
   import { authClient } from "$lib/auth-client";
   import { Button, Card } from "@lwa/ui";
 
@@ -17,8 +18,10 @@
         error = res.error.message ?? "Sign-in failed";
       } else {
         // Phase 0: bounce to root; Phase 1 will route to the user's first tenant.
-        window.location.href = "/";
+        await goto("/");
       }
+    } catch (_e) {
+      error = "Network error. Please try again.";
     } finally {
       submitting = false;
     }
@@ -33,6 +36,7 @@
         <span class="text-sm font-medium">Email</span>
         <input
           type="email"
+          name="email"
           bind:value={email}
           required
           autocomplete="email"
@@ -43,6 +47,7 @@
         <span class="text-sm font-medium">Password</span>
         <input
           type="password"
+          name="password"
           bind:value={password}
           required
           autocomplete="current-password"
