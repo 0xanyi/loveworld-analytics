@@ -1,0 +1,33 @@
+{
+  "name": "@lwa/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts",
+    "./repositories/*": "./src/repositories/*.ts"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "generate": "drizzle-kit generate",
+    "migrate": "tsx src/migrate.ts",
+    "seed": "tsx src/seeds/run.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.33.0",
+    "postgres": "^3.4.4"
+  },
+  "devDependencies": {
+    "@lwa/tsconfig": "workspace:*",
+    "@testcontainers/postgresql": "^11.14.0",
+    "drizzle-kit": "^0.24.0",
+    "testcontainers": "^10.13.0",
+    "tsx": "^4.19.0",
+    "vitest": "^1.6.0"
+  }
+}
