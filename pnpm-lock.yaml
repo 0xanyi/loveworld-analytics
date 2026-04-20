@@ -58,6 +58,9 @@ importers:
         specifier: ^3.4.4
         version: 3.4.9
     devDependencies:
+      '@lwa/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@lwa/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig

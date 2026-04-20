@@ -60,7 +60,7 @@ export interface PullConnector {
 
   validateCredentials(creds: unknown): Promise<Result<void, ConnectorError>>;
   pull(input: PullInput): Promise<Result<PullResult, ConnectorError>>;
-  listAccounts?(creds: unknown): Promise<PlatformAccountCandidate[]>;
+  listAccounts?(creds: unknown): Promise<Result<PlatformAccountCandidate[], ConnectorError>>;
   backfill?(input: BackfillInput): Promise<Result<PullResult, ConnectorError>>;
 }
 

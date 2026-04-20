@@ -23,6 +23,7 @@
     "postgres": "^3.4.4"
   },
   "devDependencies": {
+    "@lwa/contracts": "workspace:*",
     "@lwa/tsconfig": "workspace:*",
     "@testcontainers/postgresql": "^11.14.0",
     "drizzle-kit": "^0.24.0",
