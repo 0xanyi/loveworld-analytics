@@ -8,6 +8,27 @@
       "when": 1776712065951,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776722970645,
+      "tag": "0001_metrics",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776722970646,
+      "tag": "0002_effective_metric_view",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1776722970647,
+      "tag": "0003_drop_castnet_events_source",
+      "breakpoints": true
     }
   ]
 }

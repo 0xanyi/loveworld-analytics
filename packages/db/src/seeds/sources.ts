@@ -15,7 +15,8 @@ interface SeedSource {
 const SOURCES = [
   { key: "manual_satellite", name: "Satellite (Manual)", category: "tv_broadcast", authMethod: "none" },
   { key: "manual_freeview", name: "Freeview (Manual)", category: "tv_broadcast", authMethod: "none" },
-  { key: "castnet_events", name: "CastNet Player Events", category: "web", authMethod: "api_key" },
+  // castnet_events removed — CastNet platform retiring in favour of Love World Europe One,
+  // which will be added as a new connector when it ships. See docs/plans/2026-04-20-plan-02-p0-connectors.md.
   { key: "cloudflare_analytics", name: "Cloudflare Analytics", category: "web", authMethod: "api_key" },
   { key: "ga4", name: "Google Analytics 4", category: "web", authMethod: "service_account" },
   { key: "youtube", name: "YouTube Data API", category: "streaming", authMethod: "oauth2" },
