@@ -1,0 +1,28 @@
+{
+  "name": "@lwa/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/lib/index.ts",
+    "./components": "./src/lib/components/index.ts",
+    "./styles/app.css": "./src/styles/app.css"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "peerDependencies": {
+    "svelte": "^5.0.0"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.2"
+  },
+  "devDependencies": {
+    "@lwa/tsconfig": "workspace:*",
+    "svelte": "^5.0.0",
+    "@types/node": "^22.5.0"
+  }
+}
