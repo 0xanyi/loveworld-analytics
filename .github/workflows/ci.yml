@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  lint-typecheck-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: lwa
+          POSTGRES_PASSWORD: lwa_test
+          POSTGRES_DB: lwa_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+        ports:
+          - 6379:6379
+    env:
+      DATABASE_URL: postgres://lwa:lwa_test@localhost:5432/lwa_test
+      REDIS_URL: redis://localhost:6379
+      AUTH_SECRET: ci_secret_at_least_32_characters_long
+      AUTH_BASE_URL: http://localhost:5173
+      CONNECTOR_KEK_BASE64: dGVzdF9rZWtfYmFzZTY0X2F0X2xlYXN0XzMyX2J5dGVzX2xvbmdfb2s=
+      CONNECTOR_KEK_VERSION: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -F @lwa/db generate && pnpm -F @lwa/db migrate
+      - run: pnpm turbo lint typecheck test build
+
+  e2e-smoke:
+    runs-on: ubuntu-latest
+    needs: lint-typecheck-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -F @lwa/web exec playwright install --with-deps chromium
+      - run: pnpm -F @lwa/web test:e2e

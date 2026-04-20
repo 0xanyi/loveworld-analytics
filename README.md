@@ -51,7 +51,27 @@ pnpm dev                          # runs web + api + ingestion concurrently
 | `pnpm build` | Production build of every deployable |
 | `pnpm dev` | Turborepo dev pipeline |
 
+## Deployment
+
+Staging auto-deploys from `main` via GitHub Actions → Dokploy webhook. Production deploys require manual approval via Dokploy UI.
+
+| Environment | URL | Trigger |
+|---|---|---|
+| Staging | `https://staging.loveworld-analytics.example` | Push to `main` |
+| Production | `https://app.loveworld-analytics.example` | Manual approval |
+
+### Rollback
+
+From Dokploy UI: **Services → api (or web / ingestion) → Rollback → select previous image tag**. Takes < 1 minute. Schema rollback is **never** — see `docs/runbooks/R-07-tenant-data-recovery.md` (created in Phase 4).
+
+## Runbooks
+
+- [Tenant onboarding](./docs/runbooks/onboarding.md)
+- [Meta app review checklist](./docs/runbooks/meta-app-review-checklist.md)
+- Additional runbooks R-01 through R-10 arrive in Phase 4 — see the design document's Section 11.
+
 ## Documentation
 
 - [Design document](./docs/plans/2026-04-20-loveworld-analytics-design.md)
 - [Phase 0 plan](./docs/plans/2026-04-20-plan-01-foundations.md)
+- [Feature flags](./docs/feature-flags.md)

@@ -1,0 +1,87 @@
+# Dokploy Swarm stack — production
+# Managed via Dokploy UI; this file is the source-of-truth copy.
+# Differs from staging.yml only in: NODE_ENV, URLs, and replica counts.
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER_FILE: /run/secrets/pg_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
+      POSTGRES_DB: lwa_production
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    secrets:
+      - pg_user
+      - pg_password
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+
+  api:
+    image: ghcr.io/0xanyi/loveworld-analytics-api:${DEPLOY_SHA}
+    environment:
+      NODE_ENV: production
+      DATABASE_URL_FILE: /run/secrets/database_url
+      REDIS_URL: redis://redis:6379
+      AUTH_SECRET_FILE: /run/secrets/auth_secret
+      AUTH_BASE_URL: https://api.app.loveworld-analytics.example
+      ALLOWED_ORIGINS: https://app.loveworld-analytics.example
+      CONNECTOR_KEK_BASE64_FILE: /run/secrets/connector_kek
+      CONNECTOR_KEK_VERSION: "1"
+      API_PORT: "3001"
+    secrets:
+      - database_url
+      - auth_secret
+      - connector_kek
+    depends_on:
+      - postgres
+      - redis
+    deploy:
+      replicas: 3
+      update_config: { order: start-first, parallelism: 1, failure_action: rollback }
+      restart_policy: { condition: on-failure }
+
+  ingestion:
+    image: ghcr.io/0xanyi/loveworld-analytics-ingestion:${DEPLOY_SHA}
+    environment:
+      NODE_ENV: production
+      DATABASE_URL_FILE: /run/secrets/database_url
+      REDIS_URL: redis://redis:6379
+      INGESTION_CONCURRENCY: "4"
+      CONNECTOR_KEK_BASE64_FILE: /run/secrets/connector_kek
+      CONNECTOR_KEK_VERSION: "1"
+    secrets:
+      - database_url
+      - connector_kek
+    depends_on:
+      - postgres
+      - redis
+    deploy:
+      replicas: 2
+      restart_policy: { condition: on-failure }
+
+  web:
+    image: ghcr.io/0xanyi/loveworld-analytics-web:${DEPLOY_SHA}
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      VITE_API_BASE_URL: https://api.app.loveworld-analytics.example
+    deploy:
+      replicas: 3
+      update_config: { order: start-first, parallelism: 1, failure_action: rollback }
+      restart_policy: { condition: on-failure }
+
+secrets:
+  pg_user:       { external: true }
+  pg_password:   { external: true }
+  database_url:  { external: true }
+  auth_secret:   { external: true }
+  connector_kek: { external: true }
+
+volumes:
+  postgres-data:
+  redis-data:
