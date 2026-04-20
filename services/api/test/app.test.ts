@@ -24,6 +24,31 @@ describe("api app", () => {
     expect(res.status).toBe(404);
   });
 
+  it("does not set CORS headers when allowlist is empty", async () => {
+    const app = buildApp({});
+    const res = await app.request("/health", {
+      headers: { origin: "http://localhost:5173" },
+    });
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  it("reflects allowlisted origins with credentials=true", async () => {
+    const app = buildApp({ allowedOrigins: ["http://localhost:5173"] });
+    const res = await app.request("/health", {
+      headers: { origin: "http://localhost:5173" },
+    });
+    expect(res.headers.get("access-control-allow-origin")).toBe("http://localhost:5173");
+    expect(res.headers.get("access-control-allow-credentials")).toBe("true");
+  });
+
+  it("omits CORS headers for non-allowlisted origins", async () => {
+    const app = buildApp({ allowedOrigins: ["http://localhost:5173"] });
+    const res = await app.request("/health", {
+      headers: { origin: "https://evil.example.com" },
+    });
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
   it("delegates /api/auth/* to auth.handler when auth is present", async () => {
     let calledWith: string | null = null;
     const stubAuth = {

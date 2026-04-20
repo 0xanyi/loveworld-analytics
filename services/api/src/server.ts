@@ -25,7 +25,17 @@ const auth = createAuth({
   },
 });
 
-const app = buildApp({ auth });
+// In dev, seed the allowlist with SvelteKit's default port if nothing else
+// is configured. In production, operators must set ALLOWED_ORIGINS explicitly
+// (empty allowlist = no CORS = no browser client can talk to us).
+const allowedOrigins =
+  env.ALLOWED_ORIGINS.length > 0
+    ? env.ALLOWED_ORIGINS
+    : env.NODE_ENV === "development"
+      ? ["http://localhost:5173"]
+      : [];
+
+const app = buildApp({ auth, allowedOrigins });
 
 const server = serve({ fetch: app.fetch, port: env.API_PORT }, (info) => {
   console.log(`API listening on http://localhost:${info.port}`);

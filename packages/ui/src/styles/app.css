@@ -1,4 +1,12 @@
-@import "tailwindcss";
+/*
+ * Design tokens and color-scheme defaults shared across Loveworld Analytics
+ * apps. Consumers are responsible for `@import "tailwindcss";` BEFORE
+ * importing this file — @lwa/ui does not ship Tailwind itself (declaring
+ * it here would require every package resolving @lwa/ui to hoist
+ * tailwindcss into @lwa/ui's pnpm-isolated node_modules). Shadcn-svelte
+ * follows the same pattern: the component library consumes the host app's
+ * Tailwind configuration.
+ */
 
 @theme {
   --color-brand-50: oklch(0.98 0.01 250);

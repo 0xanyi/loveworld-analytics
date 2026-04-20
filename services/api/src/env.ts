@@ -15,6 +15,20 @@ const EnvSchema = z.object({
   SMTP_USER: z.string().default(""),
   SMTP_PASS: z.string().default(""),
   SMTP_FROM: z.string().default("no-reply@example.com"),
+  /**
+   * Comma-separated list of origins allowed to make credentialed requests.
+   * Required in production; optional in dev (defaults to localhost:5173 below).
+   * Example: "https://app.loveworldanalytics.com,https://admin.loveworldanalytics.com"
+   */
+  ALLOWED_ORIGINS: z
+    .string()
+    .default("")
+    .transform((s) =>
+      s
+        .split(",")
+        .map((o) => o.trim())
+        .filter(Boolean),
+    ),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

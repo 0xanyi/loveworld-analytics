@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
+import { cors } from "hono/cors";
 import type { Auth } from "@lwa/auth";
 import { requireSession } from "@lwa/auth";
 import { healthRoutes } from "./routes/health";
@@ -8,19 +9,33 @@ import { authRoutes } from "./routes/auth";
 
 export type AppDeps = {
   auth?: Auth;
+  /**
+   * Explicit origin allowlist for CORS. If empty/omitted, CORS is not mounted
+   * at all — appropriate when the API is called only from same-origin code
+   * (e.g., server-side render) or when no browser client exists yet.
+   */
+  allowedOrigins?: readonly string[];
 };
 
-// CORS is intentionally NOT mounted in Phase 0:
-// - No browser-origin frontend exists yet (Task 8 adds SvelteKit).
-// - A permissive default (`origin: *` + `credentials: true`) reflected with
-//   the request Origin is a CSRF superhighway if it survives into prod.
-// - Task 8 will add env-driven CORS with an explicit ALLOWED_ORIGINS allowlist.
-// Better Auth enforces its own Origin check on mutation endpoints, so auth
-// flows remain CSRF-safe even without app-level CORS.
 export function buildApp(deps: AppDeps = {}): Hono {
   const app = new Hono();
 
   app.use("*", logger());
+
+  if (deps.allowedOrigins && deps.allowedOrigins.length > 0) {
+    const allowlist = new Set(deps.allowedOrigins);
+    app.use(
+      "*",
+      cors({
+        // Reflect ONLY origins on the explicit allowlist. Requests from any
+        // other origin get no CORS headers, so the browser blocks them.
+        // Returning `null` from Hono's origin callback means "no CORS headers",
+        // which is the correct denial semantics.
+        origin: (origin) => (origin && allowlist.has(origin) ? origin : null),
+        credentials: true,
+      }),
+    );
+  }
 
   app.route("/", healthRoutes);
 
