@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: lwa_dev
       POSTGRES_DB: lwa_dev
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - ./.data/postgres:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +22,7 @@ services:
     container_name: lwa-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - ./.data/redis:/data
     healthcheck:

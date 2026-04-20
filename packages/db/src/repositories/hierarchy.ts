@@ -8,7 +8,8 @@ export function hierarchyRepo(db: Database) {
   return {
     async create(input: NewHierarchyNode): Promise<HierarchyNode> {
       const [row] = await db.insert(hierarchyNode).values(input).returning();
-      if (!row) throw new Error("hierarchy_node insert returned no rows");
+      if (!row)
+        throw new Error(`hierarchy_node insert returned no rows for tenant=${input.tenantId} slug=${input.slug}`);
       return row;
     },
     async listForTenant(tenantId: string, includeArchived = false): Promise<HierarchyNode[]> {

@@ -11,4 +11,3 @@ const db = drizzle(client);
 await migrate(db, { migrationsFolder: "./drizzle" });
 console.log("✓ Migrations applied");
 await client.end();
-process.exit(0);

@@ -7,4 +7,3 @@ if (!url) throw new Error("DATABASE_URL required");
 const db = createDb(url);
 await seedSources(db);
 console.log("✓ Seeded sources");
-process.exit(0);

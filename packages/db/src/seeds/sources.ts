@@ -1,5 +1,16 @@
 import type { Database } from "../client";
 import { source } from "../schema/source";
+import type { sourceCategoryEnum, authMethodEnum } from "../schema/source";
+
+type SourceCategory = (typeof sourceCategoryEnum.enumValues)[number];
+type AuthMethod = (typeof authMethodEnum.enumValues)[number];
+
+interface SeedSource {
+  readonly key: string;
+  readonly name: string;
+  readonly category: SourceCategory;
+  readonly authMethod: AuthMethod;
+}
 
 const SOURCES = [
   { key: "manual_satellite", name: "Satellite (Manual)", category: "tv_broadcast", authMethod: "none" },
@@ -12,7 +23,7 @@ const SOURCES = [
   { key: "meta_graph", name: "Meta Graph (FB + IG)", category: "social", authMethod: "oauth2" },
   { key: "tiktok", name: "TikTok Business API", category: "social", authMethod: "oauth2" },
   { key: "x", name: "X (Twitter) API", category: "social", authMethod: "api_key" },
-] as const;
+] as const satisfies readonly SeedSource[];
 
 export async function seedSources(db: Database): Promise<void> {
   for (const s of SOURCES) {
