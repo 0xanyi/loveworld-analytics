@@ -5,6 +5,7 @@ import { loadEnv } from "../src/env";
 const VALID: NodeJS.ProcessEnv = {
   DATABASE_URL: "postgres://user:pw@localhost:5432/db",
   REDIS_URL: "redis://localhost:6379",
+  LWA_KEK_V1: Buffer.alloc(32, 7).toString("base64"),
 };
 
 describe("loadEnv", () => {
