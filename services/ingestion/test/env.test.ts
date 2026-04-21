@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { isErr, isOk } from "@lwa/contracts";
 import { loadEnv } from "../src/env";
@@ -58,6 +61,45 @@ describe("loadEnv", () => {
   it("rejects missing DATABASE_URL", () => {
     const { DATABASE_URL: _, ...rest } = VALID;
     expect(isErr(loadEnv(rest))).toBe(true);
+  });
+
+  it("loads secrets from *_FILE env vars", () => {
+    const dir = mkdtempSync(join(tmpdir(), "lwa-ingestion-env-"));
+    const databaseUrlPath = join(dir, "database-url");
+    const redisUrlPath = join(dir, "redis-url");
+    const kekPath = join(dir, "kek");
+    writeFileSync(databaseUrlPath, VALID.DATABASE_URL ?? "", "utf8");
+    writeFileSync(redisUrlPath, VALID.REDIS_URL ?? "", "utf8");
+    writeFileSync(kekPath, VALID.LWA_KEK_V1 ?? "", "utf8");
+
+    const r = loadEnv({
+      DATABASE_URL_FILE: databaseUrlPath,
+      REDIS_URL_FILE: redisUrlPath,
+      LWA_KEK_V1_FILE: kekPath,
+    });
+
+    expect(isOk(r)).toBe(true);
+    if (isOk(r)) {
+      expect(r.value.DATABASE_URL).toBe(VALID.DATABASE_URL);
+      expect(r.value.REDIS_URL).toBe(VALID.REDIS_URL);
+      expect(r.value.LWA_KEK_V1).toBe(VALID.LWA_KEK_V1);
+    }
+  });
+
+  it("prefers direct env vars over *_FILE values", () => {
+    const dir = mkdtempSync(join(tmpdir(), "lwa-ingestion-env-"));
+    const kekPath = join(dir, "kek");
+    writeFileSync(kekPath, Buffer.alloc(32, 9).toString("base64"), "utf8");
+
+    const r = loadEnv({
+      ...VALID,
+      LWA_KEK_V1_FILE: kekPath,
+    });
+
+    expect(isOk(r)).toBe(true);
+    if (isOk(r)) {
+      expect(r.value.LWA_KEK_V1).toBe(VALID.LWA_KEK_V1);
+    }
   });
 
   it("rejects missing REDIS_URL", () => {
