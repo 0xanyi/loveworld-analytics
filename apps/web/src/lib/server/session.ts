@@ -19,7 +19,7 @@ export interface CurrentUser {
   twoFactorEnabled: boolean;
 }
 
-interface MeResponse {
+export interface MeResponse {
   user: CurrentUser;
   memberships: Membership[];
 }
@@ -53,14 +53,15 @@ export async function loadMemberships(
 /**
  * Ensures the user is authenticated and has at least one membership.
  * Redirects to /login if unauthenticated or if the user belongs to no tenant.
- * Returns the non-empty memberships array.
+ * Returns the full { user, memberships } object so callers can access both
+ * without a second fetch.
  */
-export async function requireMembershipsOrRedirect(
+export async function requireAuthOrRedirect(
   cookies: Cookies,
-): Promise<Membership[]> {
-  const memberships = await loadMemberships(cookies);
-  if (!memberships || memberships.length === 0) {
+): Promise<MeResponse> {
+  const me = await loadMeResponse(cookies);
+  if (!me || me.memberships.length === 0) {
     redirect(303, "/login");
   }
-  return memberships;
+  return me;
 }

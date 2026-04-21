@@ -22,9 +22,9 @@ export async function serverApiFetch(
     method: options.method ?? "GET",
     headers: {
       ...(cookieHeader ? { cookie: cookieHeader } : {}),
-      ...(options.body ? { "content-type": "application/json" } : {}),
+      ...(options.body !== undefined ? { "content-type": "application/json" } : {}),
       ...(options.headers ?? {}),
     },
-    body: options.body ? JSON.stringify(options.body) : undefined,
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
 }
