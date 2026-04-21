@@ -69,23 +69,68 @@ Prerequisites: Node 22 LTS (see `.nvmrc`), pnpm 9.12+ via corepack, Docker.
 
 ```bash
 pnpm install
-docker compose up -d              # Postgres 16 + Redis 7 on 127.0.0.1
-bash scripts/db-init.sh           # idempotent: create lwa_dev if missing
 cp .env.example .env              # replace every change_me_* value before boot
-pnpm db:migrate                   # apply migrations
-pnpm admin:create-tenant --name "Dev Tenant" --admin-email you@example.com
-pnpm dev                          # runs web + api + ingestion concurrently via turbo
 ```
 
-Boot-time validators in `@lwa/auth` and `@lwa/api` reject any secret whose value starts with `change_me_`, so a forgotten copy-paste fails loudly.
-
-### Generating a KEK
-
-`CONNECTOR_KEK_BASE64` must be 32 random bytes, base64-encoded:
+Boot-time validators in `@lwa/auth` and `@lwa/api` reject any secret whose
+value starts with `change_me_`, so a forgotten copy-paste fails loudly.
+Generate `AUTH_SECRET` and `CONNECTOR_KEK_BASE64` (both 32 random bytes,
+base64-encoded):
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
+
+Then bring up infra and start the dev servers:
+
+```bash
+docker compose up -d              # Postgres 16 + Redis 7 on 127.0.0.1
+bash scripts/db-init.sh           # idempotent: create lwa_dev if missing
+pnpm db:migrate                   # apply migrations
+pnpm dev                          # runs web (5173) + api (3001) + ingestion via turbo
+```
+
+### Creating the first admin (Phase 0)
+
+`pnpm admin:create-tenant` creates a tenant + `user` row + `network_admin`
+membership, but **does not** create a Better Auth login credential. Until
+Phase 1 ships `pnpm admin:set-password`, create the credential via Better
+Auth's sign-up endpoint first, then attach the tenant. With `pnpm dev`
+running in another terminal:
+
+```bash
+# 1. Create user + credential (via Better Auth — uses its own scrypt hasher)
+curl -X POST http://localhost:3001/api/auth/sign-up/email \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"dev@example.com","password":"<pick-a-password>","name":"Dev Admin"}'
+
+# 2. Attach tenant + network_admin membership to that user
+pnpm admin:create-tenant \
+  --name "Dev Tenant" \
+  --admin-email dev@example.com \
+  --admin-name "Dev Admin"
+```
+
+Sign in at <http://localhost:5173/login> with the email + password above.
+
+### Port conflicts
+
+If another project on your machine already binds `5432` (Postgres) or `6379`
+(Redis), create a local-only `docker-compose.override.yml` (gitignored) to
+remap the host ports:
+
+```yaml
+services:
+  postgres:
+    ports: !override
+      - "127.0.0.1:5434:5432"
+  redis:
+    ports: !override
+      - "127.0.0.1:6380:6379"
+```
+
+Then update `DATABASE_URL` and `REDIS_URL` in `.env` to match. The `!override`
+tag is required — Compose concatenates `ports` lists by default.
 
 ## Commands
 
@@ -120,10 +165,13 @@ pnpm admin:create-tenant \
   --name "LW Europe" \
   --slug lw-europe \          # optional; auto-derived from name if omitted
   --admin-email admin@lw.example \
-  --admin-password "..."      # optional; magic-link invite otherwise
+  --admin-name "Admin Name"   # optional; defaults to "Admin"
 ```
 
-Idempotent on slug; safe to re-run.
+Idempotent on slug; safe to re-run. Creates the tenant + user + membership
+rows only — see [Creating the first admin (Phase 0)](#creating-the-first-admin-phase-0)
+above for the full login-credential flow until `pnpm admin:set-password`
+ships in Phase 1.
 
 ## Deployment
 
