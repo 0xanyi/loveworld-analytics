@@ -21,6 +21,10 @@ const GQL_URL = "https://api.cloudflare.com/client/v4/graphql";
 
 type ZonesResponse = {
   result: Array<{ id: string; name: string }>;
+  result_info?: {
+    page?: number;
+    total_pages?: number;
+  };
 };
 
 type GraphqlGroup = {
@@ -70,16 +74,29 @@ export const cloudflareAnalyticsConnector: PullConnector = {
     if (!parsed.success) return err({ code: "AUTH_INVALID", message: "bad creds", retryable: false });
 
     try {
-      const res = await request("https://api.cloudflare.com/client/v4/zones?per_page=50", {
-        method: "GET",
-        headers: { authorization: `Bearer ${parsed.data.apiToken}` },
-      });
-      if (res.statusCode !== 200) {
-        return err(classifyHttpError(res.statusCode, `zones returned ${res.statusCode}`));
+      const zones: PlatformAccountCandidate[] = [];
+      let page = 1;
+      let totalPages = 1;
+
+      while (page <= totalPages) {
+        const url = `https://api.cloudflare.com/client/v4/zones?per_page=50&page=${page}`;
+
+        const res = await request(url, {
+          method: "GET",
+          headers: { authorization: `Bearer ${parsed.data.apiToken}` },
+        });
+        if (res.statusCode !== 200) {
+          return err(classifyHttpError(res.statusCode, `zones returned ${res.statusCode}`));
+        }
+
+        const body = (await res.body.json()) as ZonesResponse;
+        zones.push(...body.result.map((zone) => ({ externalId: zone.id, displayName: zone.name })));
+
+        totalPages = body.result_info?.total_pages ?? 1;
+        page += 1;
       }
 
-      const body = (await res.body.json()) as ZonesResponse;
-      return ok(body.result.map((zone) => ({ externalId: zone.id, displayName: zone.name })));
+      return ok(zones);
     } catch (error) {
       return err(classifyNetworkError(error));
     }
@@ -120,8 +137,7 @@ export const cloudflareAnalyticsConnector: PullConnector = {
           query,
           variables: {
             zoneTag,
-            start: isoDate(input.period.start),
-            end: isoDate(input.period.end),
+            ...toCloudflareDateWindow(input.period.start, input.period.end),
           },
         }),
       });
@@ -193,4 +209,19 @@ export const cloudflareAnalyticsConnector: PullConnector = {
 
 function isoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+function toCloudflareDateWindow(start: Date, end: Date): { start: string; end: string } {
+  const startDate = isoDate(start);
+  const endDate = isoDate(end);
+
+  if (endDate === startDate && end.getTime() > start.getTime()) {
+    const dayAfterStart = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate() + 1));
+    return {
+      start: startDate,
+      end: isoDate(dayAfterStart),
+    };
+  }
+
+  return { start: startDate, end: endDate };
 }

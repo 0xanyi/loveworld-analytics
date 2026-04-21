@@ -49,7 +49,7 @@ describe("cloudflare_analytics", () => {
   it("listAccounts returns zones", async () => {
     agent
       .get("https://api.cloudflare.com")
-      .intercept({ path: "/client/v4/zones?per_page=50", method: "GET" })
+      .intercept({ path: "/client/v4/zones?per_page=50&page=1", method: "GET" })
       .reply(200, fixture("list-zones.json"));
 
     const r = await cloudflareAnalyticsConnector.listAccounts!({ apiToken: "x".repeat(40) });
@@ -57,6 +57,30 @@ describe("cloudflare_analytics", () => {
     if (isOk(r)) {
       expect(r.value).toHaveLength(2);
       expect(r.value[0]?.externalId).toBe("zone-abc");
+    }
+  });
+
+  it("listAccounts paginates across multiple pages", async () => {
+    agent
+      .get("https://api.cloudflare.com")
+      .intercept({ path: "/client/v4/zones?per_page=50&page=1", method: "GET" })
+      .reply(200, {
+        result: [{ id: "zone-1", name: "one.example" }],
+        result_info: { page: 1, total_pages: 2 },
+      });
+
+    agent
+      .get("https://api.cloudflare.com")
+      .intercept({ path: "/client/v4/zones?per_page=50&page=2", method: "GET" })
+      .reply(200, {
+        result: [{ id: "zone-2", name: "two.example" }],
+        result_info: { page: 2, total_pages: 2 },
+      });
+
+    const r = await cloudflareAnalyticsConnector.listAccounts!({ apiToken: "x".repeat(40) });
+    expect(isOk(r)).toBe(true);
+    if (isOk(r)) {
+      expect(r.value.map((x) => x.externalId)).toEqual(["zone-1", "zone-2"]);
     }
   });
 
@@ -94,6 +118,52 @@ describe("cloudflare_analytics", () => {
       const byType = Object.fromEntries(r.value.records.map((x) => [x.metricType, x.value]));
       expect(byType).toEqual({ pageviews: 34567, unique_visitors: 8910, requests: 123456 });
     }
+  });
+
+  it("pull with hour granularity expands GraphQL date window to a non-empty day range", async () => {
+    let seenStart = "";
+    let seenEnd = "";
+
+    agent
+      .get("https://api.cloudflare.com")
+      .intercept({ path: "/client/v4/graphql", method: "POST" })
+      .reply((opts) => {
+        const payload = JSON.parse(String(opts.body)) as {
+          variables: { start: string; end: string };
+        };
+        seenStart = payload.variables.start;
+        seenEnd = payload.variables.end;
+        return {
+          statusCode: 200,
+          data: fixture("pull-day.json"),
+        };
+      });
+
+    const r = await cloudflareAnalyticsConnector.pull({
+      config: {
+        id: "c1",
+        tenantId: "t1",
+        sourceId: "s1",
+        sourceKey: "cloudflare_analytics",
+        credentials: { apiToken: "x".repeat(40) },
+        schedule: "",
+      },
+      account: { id: "a1", externalId: "zone-abc", hierarchyNodeId: "h1", config: {} },
+      period: {
+        start: new Date("2026-01-05T12:00:00.000Z"),
+        end: new Date("2026-01-05T13:00:00.000Z"),
+        granularity: "hour",
+      },
+      context: {
+        tenantId: "t1",
+        logger: { info: () => {}, warn: () => {}, error: () => {} },
+        rateLimiter: { acquire: async () => {} },
+      },
+    });
+
+    expect(isOk(r)).toBe(true);
+    expect(seenStart).toBe("2026-01-05");
+    expect(seenEnd).toBe("2026-01-06");
   });
 
   describe("contract", () => {
