@@ -1,4 +1,5 @@
 export { default as Button } from "./Button.svelte";
+export { default as FormFromSchema } from "./FormFromSchema.svelte";
 export { default as Card } from "./Card.svelte";
 export { default as ComparisonPicker } from "./ComparisonPicker.svelte";
 export { default as KpiTile } from "./KpiTile.svelte";
