@@ -1,4 +1,5 @@
 import { BetaAnalyticsDataClient } from "@google-analytics/data";
+import { GoogleAuth } from "google-auth-library";
 import { z } from "zod";
 import {
   err,
@@ -9,7 +10,7 @@ import {
   type PullResult,
   type Result,
 } from "@lwa/contracts";
-import { classifyNetworkError } from "./lib/errors";
+import { classifyHttpError, classifyNetworkError } from "./lib/errors";
 
 export const ga4CredentialsSchema = z.object({
   serviceAccountJson: z.string().refine((value) => {
@@ -35,9 +36,19 @@ type ReportResponse = {
   }>;
 };
 
+function parseCreds(raw: string): Record<string, unknown> {
+  return JSON.parse(raw) as Record<string, unknown>;
+}
+
 function clientFromCreds(raw: string): BetaAnalyticsDataClient {
-  const creds = JSON.parse(raw) as Record<string, unknown>;
-  return new BetaAnalyticsDataClient({ credentials: creds });
+  return new BetaAnalyticsDataClient({ credentials: parseCreds(raw) });
+}
+
+function authFromCreds(raw: string): GoogleAuth {
+  return new GoogleAuth({
+    credentials: parseCreds(raw),
+    scopes: ["https://www.googleapis.com/auth/analytics.readonly"],
+  });
 }
 
 export const ga4Connector: PullConnector = {
@@ -54,11 +65,16 @@ export const ga4Connector: PullConnector = {
     if (!parsed.success) return err({ code: "AUTH_INVALID", message: "bad creds shape", retryable: false });
 
     try {
-      clientFromCreds(parsed.data.serviceAccountJson);
+      const auth = authFromCreds(parsed.data.serviceAccountJson);
+      const tokenClient = await auth.getClient();
+      await tokenClient.getAccessToken();
       return ok(undefined);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return err({ code: "AUTH_INVALID", message, retryable: false });
+      const classified = classifyGa4Error(error);
+      if (classified.code === "CONFIG_INVALID") {
+        return err({ code: "AUTH_INVALID", message: classified.message, retryable: false });
+      }
+      return err(classified.code === "AUTH_INVALID" ? classified : { ...classified, code: "AUTH_INVALID", retryable: false });
     }
   },
 
@@ -131,10 +147,63 @@ export const ga4Connector: PullConnector = {
 
       return ok({ records });
     } catch (error) {
-      return err(classifyNetworkError(error));
+      return err(classifyGa4Error(error));
     }
   },
 };
+
+function classifyGa4Error(error: unknown): ConnectorError {
+  const message = error instanceof Error ? error.message : String(error);
+
+  const httpStatus =
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error &&
+    typeof error.response === "object" &&
+    error.response !== null &&
+    "status" in error.response &&
+    typeof error.response.status === "number"
+      ? error.response.status
+      : undefined;
+
+  if (httpStatus) {
+    return classifyHttpError(httpStatus, message);
+  }
+
+  const errorCode =
+    typeof error === "object" && error !== null && "code" in error
+      ? (error.code as unknown)
+      : undefined;
+
+  if (errorCode === 16 || errorCode === "UNAUTHENTICATED") {
+    return { code: "AUTH_INVALID", message, retryable: false };
+  }
+  if (
+    errorCode === 7 ||
+    errorCode === "PERMISSION_DENIED" ||
+    errorCode === 3 ||
+    errorCode === "INVALID_ARGUMENT" ||
+    errorCode === 5 ||
+    errorCode === "NOT_FOUND"
+  ) {
+    return { code: "CONFIG_INVALID", message, retryable: false };
+  }
+  if (errorCode === 8 || errorCode === "RESOURCE_EXHAUSTED") {
+    return { code: "RATE_LIMITED", message, retryable: true };
+  }
+  if (errorCode === 14 || errorCode === "UNAVAILABLE") {
+    return { code: "UPSTREAM_UNAVAILABLE", message, retryable: true };
+  }
+
+  if (message.match(/invalid_grant|unauthenticated|invalid credentials/i)) {
+    return { code: "AUTH_INVALID", message, retryable: false };
+  }
+  if (message.match(/permission denied|insufficient permissions|forbidden/i)) {
+    return { code: "CONFIG_INVALID", message, retryable: false };
+  }
+
+  return classifyNetworkError(error);
+}
 
 function isoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
