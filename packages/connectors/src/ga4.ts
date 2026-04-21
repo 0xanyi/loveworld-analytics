@@ -71,10 +71,13 @@ export const ga4Connector: PullConnector = {
       return ok(undefined);
     } catch (error) {
       const classified = classifyGa4Error(error);
+      if (classified.code === "AUTH_INVALID" || classified.code === "AUTH_EXPIRED") {
+        return err({ code: "AUTH_INVALID", message: classified.message, retryable: false });
+      }
       if (classified.code === "CONFIG_INVALID") {
         return err({ code: "AUTH_INVALID", message: classified.message, retryable: false });
       }
-      return err(classified.code === "AUTH_INVALID" ? classified : { ...classified, code: "AUTH_INVALID", retryable: false });
+      return err(classified);
     }
   },
 
