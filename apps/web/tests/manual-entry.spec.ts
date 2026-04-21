@@ -61,8 +61,10 @@ test("manual entry form can be submitted successfully", async ({ page }) => {
   await loginViaUi(page, user);
   await page.goto(`/${tenantSlug}/entry`);
 
-  // Source select should be visible (satellite is the only configured connector)
+  // Source select should be visible; wait a tick for Svelte’s $effect to settle
   await expect(page.getByLabel("Source", { exact: true })).toBeVisible();
+  // Wait for Svelte to flush its initial effects before filling fields
+  await page.evaluate(() => new Promise((r) => setTimeout(r, 100)));
 
   // Select hierarchy node — label is "hierarchyNodeId *" (key used as label since no title)
   const hierarchyNodeId = nodeIds["station"]!;
