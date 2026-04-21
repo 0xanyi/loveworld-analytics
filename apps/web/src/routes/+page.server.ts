@@ -1,10 +1,17 @@
 import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
+import { loadMemberships } from "$lib/server/session";
 
-/**
- * Phase 0: root always redirects to /login. Phase 1 will check session and
- * redirect authenticated users to their first tenant dashboard.
- */
-export const load: PageServerLoad = ({ url }) => {
-  redirect(303, `/login${url.search}`);
+export const load: PageServerLoad = async ({ cookies, url }) => {
+  const memberships = await loadMemberships(cookies);
+
+  if (!memberships || memberships.length === 0) {
+    redirect(303, `/login${url.search}`);
+  }
+
+  if (memberships.length === 1) {
+    redirect(303, `/${memberships[0]!.tenantSlug}${url.search}`);
+  }
+
+  return { memberships };
 };

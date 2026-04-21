@@ -1,8 +1,9 @@
 {
-  "extends": "@lwa/tsconfig/svelte",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
+    "rootDir": "./src",
     "outDir": "./dist",
     "allowImportingTsExtensions": false
   },
-  "include": ["src/**/*", "test/**/*"]
+  "include": ["src/**/*"]
 }
