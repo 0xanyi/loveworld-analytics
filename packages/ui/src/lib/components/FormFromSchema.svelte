@@ -24,9 +24,11 @@
 
   // ── flat state (dotted paths → string | boolean) ─────────────────────────────
   type FlatValue = string | boolean;
-  const flat: Record<string, FlatValue> = {};
+  let flat: Record<string, FlatValue> = {};
+  let renderNodes: RenderNode[] = [];
 
   function initFlat(
+    target: Record<string, FlatValue>,
     props: Record<string, JsonSchemaProperty>,
     init: Record<string, unknown>,
     prefix: string,
@@ -35,17 +37,24 @@
       const path = prefix ? `${prefix}.${key}` : key;
       if (prop.type === "object" && prop.properties) {
         const nested = (init[key] as Record<string, unknown>) ?? {};
-        initFlat(prop.properties, nested, path);
+        initFlat(target, prop.properties, nested, path);
       } else if (prop.type === "boolean") {
-        flat[path] = typeof init[key] === "boolean" ? (init[key] as boolean) : false;
+        target[path] = typeof init[key] === "boolean" ? (init[key] as boolean) : false;
       } else {
-        flat[path] = init[key] !== undefined ? String(init[key]) : "";
+        target[path] = init[key] !== undefined ? String(init[key]) : "";
       }
     }
   }
 
-  if (schema.properties) {
-    initFlat(schema.properties, initialValue, "");
+  function createFlat(
+    props: Record<string, JsonSchemaProperty> | undefined,
+    init: Record<string, unknown>,
+  ): Record<string, FlatValue> {
+    if (!props) return {};
+
+    const next: Record<string, FlatValue> = {};
+    initFlat(next, props, init, "");
+    return next;
   }
 
   // ── render tree ───────────────────────────────────────────────────────────────
@@ -53,6 +62,7 @@
     props: Record<string, JsonSchemaProperty>,
     parentRequired: string[] | undefined,
     prefix: string,
+    currentOverrides: Record<string, FieldOverride>,
   ): RenderNode[] {
     const nodes: RenderNode[] = [];
     for (const [key, prop] of Object.entries(props)) {
@@ -65,7 +75,7 @@
           kind: "group",
           path,
           groupLabel: prop.title ?? key,
-          children: collectNodes(prop.properties, prop.required, path),
+          children: collectNodes(prop.properties, prop.required, path, currentOverrides),
         });
       } else {
         nodes.push({
@@ -74,32 +84,34 @@
           label,
           type: prop.type as "string" | "integer" | "number" | "boolean",
           enum: prop.enum,
-          override: overrides[path] ?? overrides[key],
+          override: currentOverrides[path] ?? currentOverrides[key],
         });
       }
     }
     return nodes;
   }
 
-  const renderNodes: RenderNode[] = schema.properties
-    ? collectNodes(schema.properties, schema.required, "")
-    : [];
-
-  // Align select state with first visible option when no initialValue was given.
-  function initSelectDefaults(nodes: RenderNode[]) {
+  // Align select state with the first visible option when current state is empty or stale.
+  function initSelectDefaults(nodes: RenderNode[], target: Record<string, FlatValue>) {
     for (const node of nodes) {
       if (node.kind === "group") {
-        initSelectDefaults(node.children);
-      } else if (flat[node.path] === "") {
-        if (node.enum && node.enum.length > 0) {
-          flat[node.path] = node.enum[0]!;
-        } else if (node.override && node.override.options.length > 0) {
-          flat[node.path] = node.override.options[0]!.value;
-        }
+        initSelectDefaults(node.children, target);
+        continue;
+      }
+
+      const options = node.enum ?? node.override?.options.map((option) => option.value);
+      if (!options || options.length === 0) continue;
+
+      const currentValue = target[node.path];
+      if (typeof currentValue !== "string" || !options.includes(currentValue)) {
+        target[node.path] = options[0]!;
       }
     }
   }
-  initSelectDefaults(renderNodes);
+
+  $: renderNodes = schema.properties ? collectNodes(schema.properties, schema.required, "", overrides) : [];
+  $: flat = createFlat(schema.properties, initialValue);
+  $: initSelectDefaults(renderNodes, flat);
 
   // ── submission ────────────────────────────────────────────────────────────────
   function buildNested(paths: Record<string, FlatValue>): Record<string, unknown> {

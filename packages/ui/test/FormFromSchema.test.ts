@@ -200,4 +200,86 @@ describe("FormFromSchema", () => {
       },
     });
   });
+
+  it("rerenders fields and state when schema, initialValue, or overrides change", async () => {
+    const onSubmit = vi.fn();
+    const statusSchema = {
+      type: "object" as const,
+      properties: {
+        status: { type: "string" as const, title: "Status" },
+      },
+    };
+    const { rerender } = render(FormFromSchema, {
+      schema: {
+        type: "object",
+        properties: {
+          name: { type: "string", title: "Name" },
+        },
+      },
+      initialValue: { name: "Connector A" },
+      onSubmit,
+    });
+
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("Connector A");
+
+    await fireEvent.input(screen.getByLabelText("Name"), {
+      target: { value: "Edited" },
+    });
+
+    await rerender({
+      schema: statusSchema,
+      initialValue: {},
+      overrides: {
+        status: {
+          options: [
+            { value: "active", label: "Active" },
+            { value: "paused", label: "Paused" },
+          ],
+        },
+      },
+      onSubmit,
+    });
+
+    expect(screen.queryByLabelText("Name")).toBeNull();
+    expect((screen.getByLabelText("Status") as HTMLSelectElement).value).toBe("active");
+
+    await rerender({
+      schema: statusSchema,
+      initialValue: { status: "paused" },
+      overrides: {
+        status: {
+          options: [
+            { value: "active", label: "Active" },
+            { value: "paused", label: "Paused" },
+          ],
+        },
+      },
+      onSubmit,
+    });
+
+    expect((screen.getByLabelText("Status") as HTMLSelectElement).value).toBe("paused");
+
+    await rerender({
+      schema: statusSchema,
+      initialValue: {},
+      overrides: {
+        status: {
+          options: [
+            { value: "draft", label: "Draft" },
+            { value: "archived", label: "Archived" },
+          ],
+        },
+      },
+      onSubmit,
+    });
+
+    const statusSelect = screen.getByLabelText("Status") as HTMLSelectElement;
+    expect(statusSelect.value).toBe("draft");
+    expect(statusSelect.options).toHaveLength(2);
+    expect(statusSelect.options[0]?.text).toBe("Draft");
+
+    await fireEvent.submit(screen.getByRole("button", { name: "Submit" }).closest("form")!);
+
+    expect(onSubmit).toHaveBeenLastCalledWith({ status: "draft" });
+  });
 });
