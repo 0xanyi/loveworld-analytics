@@ -1,7 +1,8 @@
 import { Hono } from "hono";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
-import { registry } from "@lwa/connectors";
+import { can } from "@lwa/auth";
+import { registry, weekBucketStart } from "@lwa/connectors";
 import type { Database } from "@lwa/db";
 import {
   connectorConfig,
@@ -9,6 +10,7 @@ import {
   metricRecordRepo,
   source,
   tenant,
+  tenantMembership,
   type Granularity,
   type MetricCategory,
 } from "@lwa/db";
@@ -26,14 +28,38 @@ export function entriesRoutes(db: Database): Hono {
     const session = c.get("session");
     if (!session?.user) return c.json({ error: "unauthenticated" }, 401);
 
-    const parsedBody = bodySchema.safeParse(await c.req.json());
+    let rawBody: unknown;
+    try {
+      rawBody = await c.req.json();
+    } catch {
+      return c.json({ error: "invalid json" }, 400);
+    }
+
+    const parsedBody = bodySchema.safeParse(rawBody);
     if (!parsedBody.success) {
       return c.json({ error: "validation", issues: parsedBody.error.flatten() }, 422);
     }
 
     const slug = c.req.param("slug");
-    const [tenantRow] = await db.select().from(tenant).where(eq(tenant.slug, slug));
-    if (!tenantRow) return c.json({ error: "tenant not found" }, 404);
+    const [tenantAccess] = await db
+      .select({
+        tenantId: tenant.id,
+        role: tenantMembership.role,
+      })
+      .from(tenant)
+      .innerJoin(tenantMembership, eq(tenantMembership.tenantId, tenant.id))
+      .where(
+        and(
+          eq(tenant.slug, slug),
+          eq(tenantMembership.userId, session.user.id),
+          isNull(tenant.archivedAt),
+        ),
+      )
+      .limit(1);
+    if (!tenantAccess) return c.json({ error: "tenant not found" }, 404);
+    if (!can(tenantAccess.role, "log_manual_entry")) {
+      return c.json({ error: "forbidden", missing_capability: "log_manual_entry" }, 403);
+    }
 
     const connector = registry.get(parsedBody.data.connectorKey);
     if (!connector) return c.json({ error: `unknown connector ${parsedBody.data.connectorKey}` }, 400);
@@ -50,7 +76,7 @@ export function entriesRoutes(db: Database): Hono {
     const [configRow] = await db
       .select()
       .from(connectorConfig)
-      .where(and(eq(connectorConfig.tenantId, tenantRow.id), eq(connectorConfig.sourceId, sourceRow.id)));
+      .where(and(eq(connectorConfig.tenantId, tenantAccess.tenantId), eq(connectorConfig.sourceId, sourceRow.id)));
     if (!configRow) return c.json({ error: "connector not configured for this tenant" }, 400);
 
     const entry = parsedEntry.data as {
@@ -64,7 +90,7 @@ export function entriesRoutes(db: Database): Hono {
     const [nodeRow] = await db
       .select({ id: hierarchyNode.id })
       .from(hierarchyNode)
-      .where(and(eq(hierarchyNode.id, entry.hierarchyNodeId), eq(hierarchyNode.tenantId, tenantRow.id)));
+      .where(and(eq(hierarchyNode.id, entry.hierarchyNodeId), eq(hierarchyNode.tenantId, tenantAccess.tenantId)));
     if (!nodeRow) return c.json({ error: "hierarchy node not found" }, 400);
 
     const granularity = inferManualGranularity(entry.period.start, entry.period.end);
@@ -79,7 +105,7 @@ export function entriesRoutes(db: Database): Hono {
 
     const { written } = await metricRecords.upsertMany([
       {
-        tenantId: tenantRow.id,
+        tenantId: tenantAccess.tenantId,
         sourceId: sourceRow.id,
         connectorConfigId: configRow.id,
         hierarchyNodeId: entry.hierarchyNodeId,
@@ -104,8 +130,10 @@ export function entriesRoutes(db: Database): Hono {
 function inferManualGranularity(start: Date, end: Date): Granularity | null {
   if (!isUtcMidnight(start) || !isUtcMidnight(end)) return null;
 
-  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-  if (end.getTime() - start.getTime() === sevenDaysMs) {
+  const startOfWeek = weekBucketStart(start);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setUTCDate(endOfWeek.getUTCDate() + 7);
+  if (start.getTime() === startOfWeek.getTime() && end.getTime() === endOfWeek.getTime()) {
     return "week";
   }
 

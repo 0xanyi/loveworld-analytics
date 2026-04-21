@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
-import { type Database, tenant, hierarchyNode, source, connectorConfig, user } from "@lwa/db";
+import { type Database, tenant, hierarchyNode, source, connectorConfig, tenantMembership, user } from "@lwa/db";
 import { createTestDb } from "@lwa/db/test-utils";
 import type { Auth } from "@lwa/auth";
 import { buildApp } from "../src/app";
@@ -77,6 +77,71 @@ describe("POST /tenants/:slug/entries", () => {
 
     expect(res.status).toBe(422);
   });
+
+  it("returns 400 on malformed JSON", async () => {
+    const ctx = await seedManualCtx(db);
+    const app = buildApp({ db, auth: testAuth() });
+
+    const res = await app.request(`/tenants/${ctx.slug}/entries`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-test-user-id": ctx.userId,
+      },
+      body: "{not-json",
+    });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 404 when authenticated user is not a tenant member", async () => {
+    const ctx = await seedManualCtx(db);
+    const outsider = await seedUser(db);
+    const app = buildApp({ db, auth: testAuth() });
+
+    const res = await app.request(`/tenants/${ctx.slug}/entries`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-test-user-id": outsider.userId,
+      },
+      body: JSON.stringify({
+        connectorKey: "manual_satellite",
+        entry: {
+          hierarchyNodeId: ctx.nodeId,
+          period: { start: "2026-01-05", end: "2026-01-12" },
+          householdsReached: 1200,
+          estimationMethod: "operator_report",
+        },
+      }),
+    });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 422 when week period is not Monday-aligned", async () => {
+    const ctx = await seedManualCtx(db);
+    const app = buildApp({ db, auth: testAuth() });
+
+    const res = await app.request(`/tenants/${ctx.slug}/entries`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-test-user-id": ctx.userId,
+      },
+      body: JSON.stringify({
+        connectorKey: "manual_satellite",
+        entry: {
+          hierarchyNodeId: ctx.nodeId,
+          period: { start: "2026-01-06", end: "2026-01-13" },
+          householdsReached: 1200,
+          estimationMethod: "operator_report",
+        },
+      }),
+    });
+
+    expect(res.status).toBe(422);
+  });
 });
 
 function testAuth(): Auth {
@@ -131,5 +196,20 @@ async function seedManualCtx(db: Database) {
     .values({ email: `${suffix}@example.com`, name: "Manual User", emailVerified: true })
     .returning();
 
+  await db.insert(tenantMembership).values({
+    tenantId: t!.id,
+    userId: u!.id,
+    role: "network_admin",
+  });
+
   return { slug, nodeId: node!.id, userId: u!.id, tenantId: t!.id };
+}
+
+async function seedUser(db: Database) {
+  const suffix = crypto.randomUUID().slice(0, 8);
+  const [u] = await db
+    .insert(user)
+    .values({ email: `outsider-${suffix}@example.com`, name: "Outsider", emailVerified: true })
+    .returning();
+  return { userId: u!.id };
 }
