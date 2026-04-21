@@ -1,29 +1,7 @@
 import { error, redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import { serverApiFetch } from "$lib/server/api";
-
-type SourceHealth = {
-  id: string;
-  sourceKey: string;
-  sourceName: string;
-  enabled: boolean;
-  status: "active" | "error" | "paused";
-  lastRunAt: string | null;
-  lastError: string | null;
-};
-
-type IngestionRun = {
-  id: string;
-  status: "pending" | "running" | "success" | "failed" | "skipped";
-  startedAt: string;
-  finishedAt: string | null;
-  periodStart: string;
-  periodEnd: string;
-  recordsWritten: number;
-  errorCode: string | null;
-  errorMessage: string | null;
-  warnings: string[];
-};
+import type { IngestionRun, SourceHealth } from "$lib/types/source-health";
 
 export const load: PageServerLoad = async ({ params, cookies }) => {
   const slug = params.tenant;

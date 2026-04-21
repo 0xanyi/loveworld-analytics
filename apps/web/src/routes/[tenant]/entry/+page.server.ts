@@ -1,16 +1,7 @@
 import { error, fail, redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
 import { serverApiFetch } from "$lib/server/api";
-
-type SourceHealth = {
-  id: string;
-  sourceKey: string;
-  sourceName: string;
-  enabled: boolean;
-  status: "active" | "error" | "paused";
-  lastRunAt: string | null;
-  lastError: string | null;
-};
+import type { SourceHealth } from "$lib/types/source-health";
 
 type JsonSchemaObject = {
   type?: string;

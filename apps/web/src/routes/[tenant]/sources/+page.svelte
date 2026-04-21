@@ -1,15 +1,7 @@
 <script lang="ts">
-  let { data } = $props();
+  import type { SourceHealth } from "$lib/types/source-health";
 
-  type SourceHealth = {
-    id: string;
-    sourceKey: string;
-    sourceName: string;
-    enabled: boolean;
-    status: "active" | "error" | "paused";
-    lastRunAt: string | null;
-    lastError: string | null;
-  };
+  let { data } = $props();
 
   const connectors = $derived(data.connectors as SourceHealth[]);
   const tenantSlug = $derived(data.tenantSlug as string);

@@ -1,28 +1,7 @@
 <script lang="ts">
+  import type { IngestionRun, SourceHealth } from "$lib/types/source-health";
+
   let { data } = $props();
-
-  type SourceHealth = {
-    id: string;
-    sourceKey: string;
-    sourceName: string;
-    enabled: boolean;
-    status: "active" | "error" | "paused";
-    lastRunAt: string | null;
-    lastError: string | null;
-  };
-
-  type IngestionRun = {
-    id: string;
-    status: "pending" | "running" | "success" | "failed" | "skipped";
-    startedAt: string;
-    finishedAt: string | null;
-    periodStart: string;
-    periodEnd: string;
-    recordsWritten: number;
-    errorCode: string | null;
-    errorMessage: string | null;
-    warnings: string[];
-  };
 
   const connector = $derived(data.connector as SourceHealth);
   const runs = $derived(data.runs as IngestionRun[]);
