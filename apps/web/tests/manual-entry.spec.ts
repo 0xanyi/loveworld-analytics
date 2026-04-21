@@ -1,10 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { loginViaUi, provisionUser } from "./support/e2e";
 
 test("manual entry page shows configured connectors and hides unconfigured ones", async ({
   page,
 }) => {
-  const suffix = Date.now();
+  const suffix = randomUUID().slice(0, 8);
   const user = await provisionUser([
     {
       name: "Entry Tenant",
@@ -37,7 +38,7 @@ test("manual entry page shows configured connectors and hides unconfigured ones"
 });
 
 test("manual entry form can be submitted successfully", async ({ page }) => {
-  const suffix = Date.now();
+  const suffix = randomUUID().slice(0, 8);
   const user = await provisionUser([
     {
       name: "Entry Submit Tenant",

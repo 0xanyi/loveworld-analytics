@@ -55,7 +55,10 @@
                 {connector.enabled ? "Enabled" : "Disabled"}
               </td>
               <td class="px-4 py-3 text-slate-500">{formatDate(connector.lastRunAt)}</td>
-              <td class="px-4 py-3 max-w-xs truncate text-slate-500">
+              <td
+                class="max-w-xs truncate px-4 py-3 text-slate-500"
+                title={connector.lastError ?? ""}
+              >
                 {connector.lastError ?? "—"}
               </td>
               <td class="px-4 py-3">

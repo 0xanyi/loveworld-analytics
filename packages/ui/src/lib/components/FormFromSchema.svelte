@@ -116,6 +116,12 @@
   $: initSelectDefaults(renderNodes, flat);
 
   // ── submission ────────────────────────────────────────────────────────────────
+  // INVARIANT: property keys in the JSON Schema must not contain `.`.
+  // `buildNested` uses `.` as the path separator to reconstruct the nested
+  // payload from the flat state. A key like "foo.bar" at a single level
+  // would collide with the nested "foo" → "bar" structure. All P0
+  // connector schemas satisfy this invariant; add validation here if that
+  // ever changes.
   function buildNested(paths: Record<string, FlatValue>): Record<string, unknown> {
     const result: Record<string, unknown> = {};
     for (const [dotPath, val] of Object.entries(paths)) {
