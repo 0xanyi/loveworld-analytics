@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Queue, Worker, type Job } from "bullmq";
 import { GenericContainer, type StartedTestContainer } from "testcontainers";
 import IORedis from "ioredis";
+import { ok, type PullConnector } from "@lwa/contracts";
 import type { KekProvider } from "@lwa/crypto";
 import {
   connectorConfigRepo,
@@ -17,7 +18,7 @@ import { ConnectorRegistry } from "@lwa/connectors";
 import { createPullHandler } from "../src/handlers/pull";
 import { createRollupRefreshHandler } from "../src/handlers/rollup-refresh";
 import { QUEUES, type PullJobData, type RollupRefreshJobData } from "../src/queues";
-import { stubPullConnector } from "../src/lib/stub-connector";
+import { stubPullConnector } from "./fixtures/stub-connector";
 
 let pgContainer: StartedTestContainer;
 let redisContainer: StartedTestContainer;
@@ -193,6 +194,199 @@ describe("pipeline end-to-end", () => {
     });
     expect(updatedCfg!.status).toBe("active");
     expect(updatedCfg!.lastRunAt).toBeTruthy();
+  }, 45_000);
+
+  it("computes period window at execution time when scheduler payload omits period bounds", async () => {
+    const suffix = crypto.randomUUID().slice(0, 8);
+
+    const [t] = await db.insert(tenant).values({ name: `Runtime-${suffix}`, slug: `runtime-${suffix}` }).returning();
+    const [node] = await db
+      .insert(hierarchyNode)
+      .values({ tenantId: t!.id, type: "station", name: "Node", slug: `node-${suffix}` })
+      .returning();
+
+    const sourceKey = `_runtime_pull_${suffix}`;
+    const [src] = await db
+      .insert(source)
+      .values({
+        key: sourceKey,
+        name: "Runtime Pull",
+        category: "web",
+        authMethod: "none",
+      })
+      .returning();
+
+    const cfg = await connectorConfigRepo(db, kek).create({
+      tenantId: t!.id,
+      sourceId: src!.id,
+      schedule: "* * * * *",
+      credentials: {},
+    });
+
+    await db.insert(platformAccount).values({
+      tenantId: t!.id,
+      hierarchyNodeId: node!.id,
+      sourceId: src!.id,
+      externalId: `runtime-${suffix}`,
+      displayName: "Runtime",
+    });
+
+    let seenStart: Date | undefined;
+    let seenEnd: Date | undefined;
+    const runtimeConnector: PullConnector = {
+      key: sourceKey,
+      name: "Runtime Pull",
+      category: "web_visitors",
+      kind: "pull",
+      authMethod: "none",
+      credentialsSchema: stubPullConnector.credentialsSchema,
+      supportedGranularities: ["hour"],
+      validateCredentials: async () => ok(undefined),
+      pull: async (input) => {
+        seenStart = input.period.start;
+        seenEnd = input.period.end;
+        return ok({ records: [] });
+      },
+    };
+
+    const registry = new ConnectorRegistry();
+    registry.register(runtimeConnector);
+
+    const handler = createPullHandler({
+      db,
+      registry,
+      kek,
+      rollupQueue,
+      redis,
+      logger: silentLogger(),
+      rollupDelayMs: 0,
+    });
+
+    await handler(fakeJob({ connectorConfigId: cfg.id, granularity: "hour" }));
+
+    expect(seenStart).toBeTruthy();
+    expect(seenEnd).toBeTruthy();
+    const spanMs = seenEnd!.getTime() - seenStart!.getTime();
+    expect(spanMs).toBeGreaterThanOrEqual(3_590_000);
+    expect(spanMs).toBeLessThanOrEqual(3_610_000);
+  }, 45_000);
+
+  it("fails run when connector returns hierarchy node outside tenant boundary", async () => {
+    const suffix = crypto.randomUUID().slice(0, 8);
+
+    const [tenantA] = await db
+      .insert(tenant)
+      .values({ name: `BoundaryA-${suffix}`, slug: `boundary-a-${suffix}` })
+      .returning();
+    const [tenantB] = await db
+      .insert(tenant)
+      .values({ name: `BoundaryB-${suffix}`, slug: `boundary-b-${suffix}` })
+      .returning();
+
+    const [nodeA] = await db
+      .insert(hierarchyNode)
+      .values({ tenantId: tenantA!.id, type: "station", name: "NodeA", slug: `node-a-${suffix}` })
+      .returning();
+    const [nodeB] = await db
+      .insert(hierarchyNode)
+      .values({ tenantId: tenantB!.id, type: "station", name: "NodeB", slug: `node-b-${suffix}` })
+      .returning();
+
+    const sourceKey = `_boundary_pull_${suffix}`;
+    const [src] = await db
+      .insert(source)
+      .values({
+        key: sourceKey,
+        name: "Boundary Pull",
+        category: "web",
+        authMethod: "none",
+      })
+      .returning();
+
+    const cfg = await connectorConfigRepo(db, kek).create({
+      tenantId: tenantA!.id,
+      sourceId: src!.id,
+      schedule: "0 * * * *",
+      credentials: {},
+    });
+
+    await db.insert(platformAccount).values({
+      tenantId: tenantA!.id,
+      hierarchyNodeId: nodeA!.id,
+      sourceId: src!.id,
+      externalId: `boundary-${suffix}`,
+      displayName: "Boundary",
+    });
+
+    const boundaryConnector: PullConnector = {
+      key: sourceKey,
+      name: "Boundary Pull",
+      category: "web_visitors",
+      kind: "pull",
+      authMethod: "none",
+      credentialsSchema: stubPullConnector.credentialsSchema,
+      supportedGranularities: ["day"],
+      validateCredentials: async () => ok(undefined),
+      pull: async (input) =>
+        ok({
+          records: [
+            {
+              hierarchyNodeId: nodeB!.id,
+              metricType: "page_views",
+              metricCategory: "web_visitors",
+              dimensions: {},
+              periodStart: input.period.start,
+              periodEnd: input.period.end,
+              granularity: "day",
+              value: 1,
+              unit: "count",
+            },
+          ],
+        }),
+    };
+
+    const registry = new ConnectorRegistry();
+    registry.register(boundaryConnector);
+
+    const handler = createPullHandler({
+      db,
+      registry,
+      kek,
+      rollupQueue,
+      redis,
+      logger: silentLogger(),
+      rollupDelayMs: 0,
+    });
+
+    await handler(
+      fakeJob({
+        connectorConfigId: cfg.id,
+        periodStart: "2026-01-05T00:00:00.000Z",
+        periodEnd: "2026-01-06T00:00:00.000Z",
+        granularity: "day",
+      }),
+    );
+
+    const metricRows = await db.query.metricRecord.findMany({
+      where: (mr, { eq }) => eq(mr.connectorConfigId, cfg.id),
+    });
+    expect(metricRows).toHaveLength(0);
+
+    const run = await db.query.ingestionRun.findFirst({
+      where: (r, { eq }) => eq(r.connectorConfigId, cfg.id),
+      columns: { status: true, errorCode: true, errorMessage: true },
+      orderBy: (r, { desc }) => [desc(r.startedAt)],
+    });
+    expect(run!.status).toBe("failed");
+    expect(run!.errorCode).toBe("TENANT_BOUNDARY_VIOLATION");
+    expect(run!.errorMessage).toContain("outside tenant boundary");
+
+    const updatedCfg = await db.query.connectorConfig.findFirst({
+      where: (c, { eq }) => eq(c.id, cfg.id),
+      columns: { status: true, lastError: true },
+    });
+    expect(updatedCfg!.status).toBe("error");
+    expect(updatedCfg!.lastError).toContain("outside tenant boundary");
   }, 45_000);
 });
 

@@ -14,9 +14,11 @@ export interface SchedulerDeps {
 export function startScheduler(deps: SchedulerDeps): { stop: () => Promise<void> } {
   const { db, pullQueue, logger, pollIntervalMs = 60_000 } = deps;
   let stopped = false;
+  let inFlight = false;
 
   const tick = async () => {
-    if (stopped) return;
+    if (stopped || inFlight) return;
+    inFlight = true;
     try {
       const rows = await db
         .select({
@@ -50,8 +52,6 @@ export function startScheduler(deps: SchedulerDeps): { stop: () => Promise<void>
             name,
             {
               connectorConfigId: cfg.configId,
-              periodStart: new Date(Date.now() - 3_600_000).toISOString(),
-              periodEnd: new Date().toISOString(),
               granularity: "hour",
             },
             {
@@ -72,6 +72,8 @@ export function startScheduler(deps: SchedulerDeps): { stop: () => Promise<void>
       logger.info({ active: desired.size }, "scheduler reconciled");
     } catch (err) {
       logger.error({ err }, "scheduler tick failed");
+    } finally {
+      inFlight = false;
     }
   };
 

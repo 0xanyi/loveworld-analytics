@@ -1,12 +1,13 @@
 import type { Job, Queue } from "bullmq";
 import type IORedis from "ioredis";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { isErr, type ConnectorError, type PullInput } from "@lwa/contracts";
 import { classifyNetworkError, type ConnectorRegistry } from "@lwa/connectors";
 import type { KekProvider } from "@lwa/crypto";
 import {
   connectorConfig,
   connectorConfigRepo,
+  hierarchyNode,
   ingestionRunRepo,
   metricRecordRepo,
   platformAccountRepo,
@@ -50,7 +51,7 @@ export function createPullHandler(deps: PullHandlerDeps) {
 
   return async function pullHandler(job: Job<PullJobData>): Promise<void> {
     const t0 = Date.now();
-    const { connectorConfigId, periodStart, periodEnd, granularity } = job.data;
+    const { connectorConfigId, granularity } = job.data;
 
     const [cfg] = await db.select().from(connectorConfig).where(eq(connectorConfig.id, connectorConfigId));
     if (!cfg) throw new Error(`connector_config ${connectorConfigId} not found`);
@@ -62,10 +63,12 @@ export function createPullHandler(deps: PullHandlerDeps) {
     if (!connector) throw new Error(`connector ${src.key} not registered`);
     if (connector.kind !== "pull") throw new Error(`connector ${src.key} is not pull`);
 
+    const period = resolvePeriodWindow(job.data);
+
     const run = await runs.start({
       connectorConfigId,
-      periodStart: new Date(periodStart),
-      periodEnd: new Date(periodEnd),
+      periodStart: period.start,
+      periodEnd: period.end,
       jobId: job.id?.toString(),
     });
 
@@ -120,8 +123,8 @@ export function createPullHandler(deps: PullHandlerDeps) {
             config: account.config,
           },
           period: {
-            start: new Date(periodStart),
-            end: new Date(periodEnd),
+            start: period.start,
+            end: period.end,
             granularity,
           },
           context: {
@@ -176,6 +179,32 @@ export function createPullHandler(deps: PullHandlerDeps) {
         }
 
         if (result.value.warnings) warnings.push(...result.value.warnings);
+
+        const nodeIds = [...new Set(result.value.records.map((r) => r.hierarchyNodeId))];
+        if (nodeIds.length > 0) {
+          const ownedNodes = await db
+            .select({ id: hierarchyNode.id })
+            .from(hierarchyNode)
+            .where(and(eq(hierarchyNode.tenantId, cfg.tenantId), inArray(hierarchyNode.id, nodeIds)));
+
+          if (ownedNodes.length !== nodeIds.length) {
+            const owned = new Set(ownedNodes.map((n) => n.id));
+            const invalidHierarchyNodeIds = nodeIds.filter((id) => !owned.has(id));
+            const message = `connector returned hierarchy nodes outside tenant boundary: ${invalidHierarchyNodeIds.join(",")}`;
+
+            await finishRun({
+              status: "failed",
+              recordsWritten: totalWritten,
+              errorCode: "TENANT_BOUNDARY_VIOLATION",
+              errorMessage: message,
+            });
+            await db
+              .update(connectorConfig)
+              .set({ status: "error", lastError: message })
+              .where(eq(connectorConfig.id, cfg.id));
+            return;
+          }
+        }
 
         const drafts = result.value.records.map((r) => ({
           tenantId: cfg.tenantId,
@@ -262,6 +291,37 @@ export function createPullHandler(deps: PullHandlerDeps) {
       throw err;
     }
   };
+}
+
+function resolvePeriodWindow(data: PullJobData): { start: Date; end: Date } {
+  if (data.periodStart && data.periodEnd) {
+    return { start: new Date(data.periodStart), end: new Date(data.periodEnd) };
+  }
+
+  const end = new Date();
+  const start = new Date(end);
+
+  switch (data.granularity) {
+    case "hour":
+      start.setUTCHours(start.getUTCHours() - 1);
+      break;
+    case "day":
+      start.setUTCDate(start.getUTCDate() - 1);
+      break;
+    case "week":
+      start.setUTCDate(start.getUTCDate() - 7);
+      break;
+    case "month":
+      start.setUTCMonth(start.getUTCMonth() - 1);
+      break;
+    case "quarter":
+      start.setUTCMonth(start.getUTCMonth() - 3);
+      break;
+    default:
+      throw new Error(`unsupported granularity: ${String(data.granularity)}`);
+  }
+
+  return { start, end };
 }
 
 function mapToRollupGranularity(g: PullJobData["granularity"]): RollupRefreshJobData["granularity"] {

@@ -29,12 +29,16 @@ export const QUEUE_DEFAULTS = {
 
 export type PullJobData = {
   connectorConfigId: string;
-  periodStart: string;
-  periodEnd: string;
   granularity: "hour" | "day" | "week" | "month" | "quarter";
+  periodStart?: string;
+  periodEnd?: string;
 };
 
-export type BackfillJobData = PullJobData & {
+export type BackfillJobData = {
+  connectorConfigId: string;
+  granularity: "hour" | "day" | "week" | "month" | "quarter";
+  periodStart: string;
+  periodEnd: string;
   backfillRunId: string;
   chunkIndex: number;
 };

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Queue } from "bullmq";
 import { eq } from "drizzle-orm";
 import { GenericContainer, type StartedTestContainer } from "testcontainers";
@@ -78,6 +78,14 @@ describe("scheduler reconciliation", () => {
       const jobs = await pullQueue.getRepeatableJobs();
       return jobs.some((j) => j.name === `pull:${cfg!.id}`);
     });
+
+    const jobs = await pullQueue.getRepeatableJobs();
+    const created = jobs.find((j) => j.name === `pull:${cfg!.id}`);
+    expect(created).toBeTruthy();
+
+    const nextJobs = await pullQueue.getJobs(["delayed", "waiting", "prioritized"], 0, 20);
+    const nextPull = nextJobs.find((j) => j.name === `pull:${cfg!.id}`);
+    expect(nextPull?.data).toEqual({ connectorConfigId: cfg!.id, granularity: "hour" });
     await sched.stop();
 
     await db.update(connectorConfig).set({ enabled: false }).where(eq(connectorConfig.id, cfg!.id));
