@@ -42,8 +42,8 @@ services:
       AUTH_SECRET_FILE: /run/secrets/auth_secret
       AUTH_BASE_URL: https://api.app.loveworld-analytics.example
       ALLOWED_ORIGINS: https://app.loveworld-analytics.example
-      CONNECTOR_KEK_BASE64_FILE: /run/secrets/connector_kek
-      CONNECTOR_KEK_VERSION: "1"
+      LWA_KEK_CURRENT: v1
+      LWA_KEK_V1_FILE: /run/secrets/connector_kek
       API_PORT: "3001"
     secrets:
       - database_url
@@ -74,8 +74,8 @@ services:
       DATABASE_URL_FILE: /run/secrets/database_url
       REDIS_URL: redis://redis:6379
       INGESTION_CONCURRENCY: "4"
-      CONNECTOR_KEK_BASE64_FILE: /run/secrets/connector_kek
-      CONNECTOR_KEK_VERSION: "1"
+      LWA_KEK_CURRENT: v1
+      LWA_KEK_V1_FILE: /run/secrets/connector_kek
     secrets:
       - database_url
       - connector_kek

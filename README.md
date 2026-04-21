@@ -74,12 +74,23 @@ cp .env.example .env              # replace every change_me_* value before boot
 
 Boot-time validators in `@lwa/auth` and `@lwa/api` reject any secret whose
 value starts with `change_me_`, so a forgotten copy-paste fails loudly.
-Generate `AUTH_SECRET` and `CONNECTOR_KEK_BASE64` (both 32 random bytes,
+Generate `AUTH_SECRET` and `LWA_KEK_V1` (both 32 random bytes,
 base64-encoded):
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
+
+Set these in `.env`:
+
+```env
+AUTH_BASE_URL=http://localhost:3001
+LWA_KEK_CURRENT=v1
+LWA_KEK_V1=<base64-32-byte-key>
+```
+
+`AUTH_BASE_URL` must point at the API service because Better Auth is mounted at
+`/api/auth/*` there.
 
 Then bring up infra and start the dev servers:
 

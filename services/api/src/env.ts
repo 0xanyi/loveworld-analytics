@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { err, ok, type Result } from "@lwa/contracts";
+import { resolveFileEnv } from "@lwa/crypto";
 
 const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -39,6 +40,7 @@ export type Env = z.infer<typeof EnvSchema>;
  * function is testable in-process. `server.ts` owns the exit decision.
  */
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Result<Env, z.ZodError> {
-  const parsed = EnvSchema.safeParse(source);
+  const resolved = resolveFileEnv(source, ["DATABASE_URL", "AUTH_SECRET", "SMTP_PASS"]);
+  const parsed = EnvSchema.safeParse(resolved);
   return parsed.success ? ok(parsed.data) : err(parsed.error);
 }

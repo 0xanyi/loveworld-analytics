@@ -464,7 +464,7 @@ REDIS_URL=redis://localhost:6379
 
 # Better Auth
 AUTH_SECRET=change_me_to_random_32_chars_min
-AUTH_BASE_URL=http://localhost:5173
+AUTH_BASE_URL=http://localhost:3001
 
 # API
 API_PORT=3001
@@ -3844,7 +3844,7 @@ jobs:
       DATABASE_URL: postgres://lwa:lwa_test@localhost:5432/lwa_test
       REDIS_URL: redis://localhost:6379
       AUTH_SECRET: ci_secret_at_least_32_characters_long
-      AUTH_BASE_URL: http://localhost:5173
+      AUTH_BASE_URL: http://localhost:3001
       CONNECTOR_KEK_BASE64: dGVzdF9rZWtfYmFzZTY0X2F0X2xlYXN0XzMyX2J5dGVzX2xvbmdfb2s=
       CONNECTOR_KEK_VERSION: "1"
     steps:
