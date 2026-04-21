@@ -27,6 +27,12 @@ describe("envelope crypto", () => {
     await expect(openCredentials(tampered, provider)).rejects.toThrow();
   });
 
+  it("rejects malformed envelope format", async () => {
+    await expect(
+      openCredentials({ ciphertext: Buffer.from("abc").toString("base64"), kekVersion: "v1" }, provider),
+    ).rejects.toThrow(/invalid sealed credentials format/);
+  });
+
   it("rejects unknown kek version", async () => {
     const sealed = await sealCredentials({ x: 1 }, provider);
     await expect(openCredentials({ ...sealed, kekVersion: "v999" }, provider)).rejects.toThrow(

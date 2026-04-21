@@ -6,7 +6,7 @@
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./contract-suite": "./src/lib/contract-suite.ts"
+    "./test-utils/contract-suite": "./src/lib/contract-suite.ts"
   },
   "scripts": {
     "build": "tsc -b",

@@ -62,14 +62,24 @@ export function connectorConfigRepo(db: Database, kek: KekProvider): ConnectorCo
     },
 
     async listForScheduler() {
-      const rows = await db.execute<ConnectorConfig & { source_key: string }>(sql`
-        SELECT cc.*, s.key AS source_key
+      return db.execute<ConnectorConfig & { sourceKey: string }>(sql`
+        SELECT
+          cc.id,
+          cc.tenant_id AS "tenantId",
+          cc.source_id AS "sourceId",
+          cc.credentials_ciphertext AS "credentialsCiphertext",
+          cc.credentials_kek_version AS "credentialsKekVersion",
+          cc.schedule,
+          cc.enabled,
+          cc.status,
+          cc.last_run_at AS "lastRunAt",
+          cc.last_error AS "lastError",
+          cc.created_at AS "createdAt",
+          s.key AS "sourceKey"
         FROM connector_config cc
         JOIN source s ON s.id = cc.source_id
         WHERE cc.enabled = TRUE AND cc.status != 'paused'
       `);
-
-      return rows.map((r) => ({ ...r, sourceKey: r.source_key }));
     },
   };
 }

@@ -10,6 +10,9 @@ export type SealedCredentials = {
   kekVersion: string;
 };
 
+const ENVELOPE_VERSION = 1;
+const GCM_TAG_LENGTH = 16;
+
 export async function sealCredentials<T>(plain: T, kek: KekProvider): Promise<SealedCredentials> {
   const dek = randomBytes(32);
   const kekKey = kek.getKey(kek.currentVersion);
@@ -24,7 +27,11 @@ export async function sealCredentials<T>(plain: T, kek: KekProvider): Promise<Se
   const ct = Buffer.concat([ctCipher.update(Buffer.from(JSON.stringify(plain))), ctCipher.final()]);
   const ctTag = ctCipher.getAuthTag();
 
+  const ctLength = Buffer.allocUnsafe(4);
+  ctLength.writeUInt32BE(ct.length, 0);
+
   const layout = Buffer.concat([
+    Uint8Array.of(ENVELOPE_VERSION),
     Uint8Array.of(dekIv.length),
     dekIv,
     Uint8Array.of(wrappedDek.length),
@@ -33,6 +40,7 @@ export async function sealCredentials<T>(plain: T, kek: KekProvider): Promise<Se
     dekTag,
     Uint8Array.of(ctIv.length),
     ctIv,
+    ctLength,
     ct,
     ctTag,
   ]);
@@ -44,23 +52,49 @@ export async function openCredentials<T>(sealed: SealedCredentials, kek: KekProv
   const kekKey = kek.getKey(sealed.kekVersion);
   const buf = Buffer.from(sealed.ciphertext, "base64");
   let p = 0;
-  const read = (n: number) => {
-    const s = buf.subarray(p, p + n);
-    p += n;
-    return s;
+
+  const failFormat = () => {
+    throw new Error("invalid sealed credentials format");
   };
 
-  const dekIvLen = buf[p++]!;
+  const readByte = () => {
+    if (p >= buf.length) failFormat();
+    const value = buf[p]!;
+    p += 1;
+    return value;
+  };
+
+  const read = (n: number) => {
+    if (n < 0 || p + n > buf.length) failFormat();
+    const value = buf.subarray(p, p + n);
+    p += n;
+    return value;
+  };
+
+  if (buf.length < 1 + 4 + GCM_TAG_LENGTH) failFormat();
+
+  const version = readByte();
+  if (version !== ENVELOPE_VERSION) failFormat();
+
+  const dekIvLen = readByte();
   const dekIv = read(dekIvLen);
-  const wrappedDekLen = buf[p++]!;
+
+  const wrappedDekLen = readByte();
   const wrappedDek = read(wrappedDekLen);
-  const dekTagLen = buf[p++]!;
+
+  const dekTagLen = readByte();
   const dekTag = read(dekTagLen);
-  const ctIvLen = buf[p++]!;
+
+  const ctIvLen = readByte();
   const ctIv = read(ctIvLen);
-  const ctTagLen = 16;
-  const ct = buf.subarray(p, buf.length - ctTagLen);
-  const ctTag = buf.subarray(buf.length - ctTagLen);
+
+  const ctLenBuf = read(4);
+  const ctLen = ctLenBuf.readUInt32BE(0);
+  const ct = read(ctLen);
+
+  const ctTag = read(GCM_TAG_LENGTH);
+
+  if (p !== buf.length) failFormat();
 
   const dekDecipher = createDecipheriv("aes-256-gcm", kekKey, dekIv);
   dekDecipher.setAuthTag(dekTag);
