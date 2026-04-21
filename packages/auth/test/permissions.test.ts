@@ -13,6 +13,7 @@ const CAPABILITIES = [
   "override_metric",
   "reverse_override",
   "manage_connectors",
+  "view_source_health",
   "trigger_backfill",
   "invite_users",
   "edit_hierarchy",
@@ -36,6 +37,7 @@ const EXPECTED: Record<Role, ReadonlySet<Capability>> = {
     "log_manual_entry",
     "override_metric",
     "reverse_override",
+    "view_source_health",
     "trigger_backfill",
     "view_audit_log",
   ]),
@@ -50,7 +52,7 @@ const EXPECTED: Record<Role, ReadonlySet<Capability>> = {
   ]),
 };
 
-describe("can(role, capability) — exhaustive 56-cell matrix", () => {
+describe("can(role, capability) — exhaustive 60-cell matrix", () => {
   for (const role of ROLES) {
     for (const cap of CAPABILITIES) {
       const expected = EXPECTED[role].has(cap);
@@ -66,9 +68,9 @@ describe("capabilitiesFor(role)", () => {
     expect(capabilitiesFor(role)).toEqual(EXPECTED[role]);
   });
 
-  it("sizes match the design: 14/10/3/6", () => {
-    expect(capabilitiesFor("network_admin").size).toBe(14);
-    expect(capabilitiesFor("station_manager").size).toBe(10);
+  it("sizes match the design: 15/11/3/6", () => {
+    expect(capabilitiesFor("network_admin").size).toBe(15);
+    expect(capabilitiesFor("station_manager").size).toBe(11);
     expect(capabilitiesFor("board_viewer").size).toBe(3);
     expect(capabilitiesFor("analyst").size).toBe(6);
   });

@@ -10,6 +10,7 @@ export type Capability =
   | "override_metric"
   | "reverse_override"
   | "manage_connectors"
+  | "view_source_health"
   | "trigger_backfill"
   | "invite_users"
   | "edit_hierarchy"
@@ -27,6 +28,7 @@ const MATRIX: Record<Role, ReadonlySet<Capability>> = {
     "override_metric",
     "reverse_override",
     "manage_connectors",
+    "view_source_health",
     "trigger_backfill",
     "invite_users",
     "edit_hierarchy",
@@ -42,6 +44,7 @@ const MATRIX: Record<Role, ReadonlySet<Capability>> = {
     "log_manual_entry",
     "override_metric",
     "reverse_override",
+    "view_source_health",
     "trigger_backfill",
     "view_audit_log",
   ]),
