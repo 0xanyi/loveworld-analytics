@@ -101,6 +101,10 @@ jobs:
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
       - run: pnpm -F @lwa/db migrate
+      - name: Seed sources registry
+        # e2e-seed.ts joins against the source table when seeding connectors,
+        # so the static source rows must exist before Playwright runs.
+        run: pnpm -F @lwa/db seed
       - name: Start API for Playwright
         run: |
           pnpm -F @lwa/api dev > /tmp/lwa-api.log 2>&1 &
