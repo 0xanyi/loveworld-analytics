@@ -29,10 +29,28 @@ export type TenantScenario = {
     sourceBreakdown: Record<string, number>;
     hasAdjustments?: boolean;
   }>;
+  connectors?: Array<{
+    key: string;
+    status?: "active" | "error" | "paused";
+    enabled?: boolean;
+    lastError?: string | null;
+    lastRunAt?: string | null;
+    runs?: Array<{
+      status: "pending" | "running" | "success" | "failed" | "skipped";
+      startedAt: string;
+      finishedAt?: string | null;
+      periodStart: string;
+      periodEnd: string;
+      recordsWritten?: number;
+      errorCode?: string | null;
+      errorMessage?: string | null;
+      warnings?: string[];
+    }>;
+  }>;
 };
 
 type SeedResult = {
-  tenants: Array<{ slug: string; nodeIds: Record<string, string> }>;
+  tenants: Array<{ slug: string; nodeIds: Record<string, string>; connectorIds: Record<string, string> }>;
 };
 
 export async function provisionUser(tenants: TenantScenario[]) {

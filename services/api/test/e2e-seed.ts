@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { createDb, hierarchyNode, metricRollup, tenant, tenantMembership, user } from "@lwa/db";
-import { sql } from "drizzle-orm";
+import { connectorConfig, createDb, hierarchyNode, ingestionRun, metricRollup, source, tenant, tenantMembership, user } from "@lwa/db";
+import { eq, sql } from "drizzle-orm";
 
 type HierarchySeed = {
   key: string;
@@ -19,6 +19,27 @@ type MetricSeed = {
   hasAdjustments?: boolean;
 };
 
+type RunSeed = {
+  status: "pending" | "running" | "success" | "failed" | "skipped";
+  startedAt: string;
+  finishedAt?: string | null;
+  periodStart: string;
+  periodEnd: string;
+  recordsWritten?: number;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  warnings?: string[];
+};
+
+type ConnectorSeed = {
+  key: string;
+  status?: "active" | "error" | "paused";
+  enabled?: boolean;
+  lastError?: string | null;
+  lastRunAt?: string | null;
+  runs?: RunSeed[];
+};
+
 type TenantSeed = {
   name: string;
   slug: string;
@@ -26,6 +47,7 @@ type TenantSeed = {
   scopeNodeKeys?: string[];
   hierarchy?: HierarchySeed[];
   metrics?: MetricSeed[];
+  connectors?: ConnectorSeed[];
 };
 
 type Input = {
@@ -51,7 +73,7 @@ if (!existingUser) {
   throw new Error(`user not found for ${input.email}`);
 }
 
-const tenantResults: Array<{ slug: string; tenantId: string; nodeIds: Record<string, string> }> = [];
+const tenantResults: Array<{ slug: string; tenantId: string; nodeIds: Record<string, string>; connectorIds: Record<string, string> }> = [];
 
 for (const tenantSeed of input.tenants) {
   const [tenantRow] = await db
@@ -114,7 +136,44 @@ for (const tenantSeed of input.tenants) {
     });
   }
 
-  tenantResults.push({ slug: tenantSeed.slug, tenantId: tenantRow.id, nodeIds });
+  const connectorIds: Record<string, string> = {};
+
+  for (const connectorSeed of tenantSeed.connectors ?? []) {
+    const [sourceRow] = await db.select().from(source).where(eq(source.key, connectorSeed.key));
+    if (!sourceRow) throw new Error(`source not found for connector key: ${connectorSeed.key}`);
+
+    const [configRow] = await db
+      .insert(connectorConfig)
+      .values({
+        tenantId: tenantRow.id,
+        sourceId: sourceRow.id,
+        status: connectorSeed.status ?? "active",
+        enabled: connectorSeed.enabled ?? true,
+        lastError: connectorSeed.lastError ?? null,
+        lastRunAt: connectorSeed.lastRunAt ? new Date(connectorSeed.lastRunAt) : null,
+      })
+      .returning();
+
+    if (!configRow) throw new Error(`failed to create connector config for ${connectorSeed.key}`);
+    connectorIds[connectorSeed.key] = configRow.id;
+
+    for (const runSeed of connectorSeed.runs ?? []) {
+      await db.insert(ingestionRun).values({
+        connectorConfigId: configRow.id,
+        status: runSeed.status,
+        startedAt: new Date(runSeed.startedAt),
+        finishedAt: runSeed.finishedAt ? new Date(runSeed.finishedAt) : null,
+        periodStart: new Date(runSeed.periodStart),
+        periodEnd: new Date(runSeed.periodEnd),
+        recordsWritten: runSeed.recordsWritten ?? 0,
+        errorCode: runSeed.errorCode ?? null,
+        errorMessage: runSeed.errorMessage ?? null,
+        warnings: runSeed.warnings ?? [],
+      });
+    }
+  }
+
+  tenantResults.push({ slug: tenantSeed.slug, tenantId: tenantRow.id, nodeIds, connectorIds });
 }
 
 console.log(JSON.stringify({ userId: existingUser.id, tenants: tenantResults, seedId: randomUUID() }));

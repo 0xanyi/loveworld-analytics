@@ -12,6 +12,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@lwa/auth": "workspace:*",
     "@lwa/ui": "workspace:*",
     "@sveltejs/kit": "^2.5.0",
     "better-auth": "^1.6.5",
