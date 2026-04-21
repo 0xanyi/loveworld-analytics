@@ -6,7 +6,7 @@
   "main": "./src/worker.ts",
   "scripts": {
     "build": "tsc -b",
-    "dev": "tsx watch src/worker.ts",
+    "dev": "tsx watch --env-file-if-exists=../../.env src/worker.ts",
     "start": "node dist/worker.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test",

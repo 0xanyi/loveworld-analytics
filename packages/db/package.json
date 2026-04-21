@@ -16,8 +16,8 @@
     "lint": "eslint src test",
     "test": "vitest run",
     "generate": "drizzle-kit generate",
-    "migrate": "tsx src/migrate.ts",
-    "seed": "tsx src/seeds/run.ts"
+    "migrate": "tsx --env-file-if-exists=../../.env src/migrate.ts",
+    "seed": "tsx --env-file-if-exists=../../.env src/seeds/run.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.33.0",

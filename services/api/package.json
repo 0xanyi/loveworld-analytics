@@ -6,12 +6,12 @@
   "main": "./src/server.ts",
   "scripts": {
     "build": "tsc -b",
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch --env-file-if-exists=../../.env src/server.ts",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test",
     "test": "vitest run",
-    "admin:create-tenant": "tsx src/admin/create-tenant.ts"
+    "admin:create-tenant": "tsx --env-file-if-exists=../../.env src/admin/create-tenant.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.0",
