@@ -58,7 +58,7 @@ export function buildApp(deps: AppDeps = {}): Hono {
     app.use("/tenants/:slug/*", requireSession(deps.auth));
   }
 
-  app.route("/", meRoutes);
+  app.route("/", meRoutes(deps.db));
 
   if (deps.db) {
     app.route("/", entriesRoutes(deps.db));
