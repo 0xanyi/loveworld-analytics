@@ -196,7 +196,7 @@ describe("pipeline end-to-end", () => {
     expect(updatedCfg!.lastRunAt).toBeTruthy();
   }, 45_000);
 
-  it("computes period window at execution time when scheduler payload omits period bounds", async () => {
+  it("computes aligned period window at execution time when scheduler payload omits period bounds", async () => {
     const suffix = crypto.randomUUID().slice(0, 8);
 
     const [t] = await db.insert(tenant).values({ name: `Runtime-${suffix}`, slug: `runtime-${suffix}` }).returning();
@@ -267,8 +267,64 @@ describe("pipeline end-to-end", () => {
     expect(seenStart).toBeTruthy();
     expect(seenEnd).toBeTruthy();
     const spanMs = seenEnd!.getTime() - seenStart!.getTime();
-    expect(spanMs).toBeGreaterThanOrEqual(3_590_000);
-    expect(spanMs).toBeLessThanOrEqual(3_610_000);
+    const startIso = seenStart!.toISOString();
+    const endIso = seenEnd!.toISOString();
+    expect(startIso.endsWith(":00:00.000Z")).toBe(true);
+    expect(endIso.endsWith(":00:00.000Z")).toBe(true);
+    expect(spanMs).toBe(3_600_000);
+  }, 45_000);
+
+  it("fails on partial period override payload", async () => {
+    const suffix = crypto.randomUUID().slice(0, 8);
+
+    const [t] = await db.insert(tenant).values({ name: `Partial-${suffix}`, slug: `partial-${suffix}` }).returning();
+    const [node] = await db
+      .insert(hierarchyNode)
+      .values({ tenantId: t!.id, type: "station", name: "Node", slug: `partial-node-${suffix}` })
+      .returning();
+    const sourceKey = `_partial_pull_${suffix}`;
+    const [src] = await db
+      .insert(source)
+      .values({ key: sourceKey, name: "Partial Pull", category: "web", authMethod: "none" })
+      .returning();
+
+    const cfg = await connectorConfigRepo(db, kek).create({
+      tenantId: t!.id,
+      sourceId: src!.id,
+      schedule: "* * * * *",
+      credentials: {},
+    });
+
+    await db.insert(platformAccount).values({
+      tenantId: t!.id,
+      hierarchyNodeId: node!.id,
+      sourceId: src!.id,
+      externalId: `partial-${suffix}`,
+      displayName: "Partial",
+    });
+
+    const registry = new ConnectorRegistry();
+    registry.register({ ...stubPullConnector, key: sourceKey, name: "Partial Pull" });
+
+    const handler = createPullHandler({
+      db,
+      registry,
+      kek,
+      rollupQueue,
+      redis,
+      logger: silentLogger(),
+      rollupDelayMs: 0,
+    });
+
+    await expect(
+      handler(
+        fakeJob({
+          connectorConfigId: cfg.id,
+          periodStart: "2026-01-05T00:00:00.000Z",
+          granularity: "day",
+        }),
+      ),
+    ).rejects.toThrow("periodStart and periodEnd must be provided together");
   }, 45_000);
 
   it("fails run when connector returns hierarchy node outside tenant boundary", async () => {

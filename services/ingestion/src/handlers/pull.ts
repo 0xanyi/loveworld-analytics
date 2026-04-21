@@ -294,34 +294,65 @@ export function createPullHandler(deps: PullHandlerDeps) {
 }
 
 function resolvePeriodWindow(data: PullJobData): { start: Date; end: Date } {
-  if (data.periodStart && data.periodEnd) {
-    return { start: new Date(data.periodStart), end: new Date(data.periodEnd) };
+  if ((data.periodStart && !data.periodEnd) || (!data.periodStart && data.periodEnd)) {
+    throw new Error("periodStart and periodEnd must be provided together");
   }
 
-  const end = new Date();
-  const start = new Date(end);
+  if (data.periodStart && data.periodEnd) {
+    const start = new Date(data.periodStart);
+    const end = new Date(data.periodEnd);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      throw new Error("invalid periodStart/periodEnd");
+    }
+    if (start >= end) {
+      throw new Error("periodStart must be before periodEnd");
+    }
+    return { start, end };
+  }
+
+  const now = new Date();
+  const end = new Date(now);
 
   switch (data.granularity) {
-    case "hour":
+    case "hour": {
+      end.setUTCMinutes(0, 0, 0);
+      const start = new Date(end);
       start.setUTCHours(start.getUTCHours() - 1);
-      break;
-    case "day":
+      return { start, end };
+    }
+    case "day": {
+      end.setUTCHours(0, 0, 0, 0);
+      const start = new Date(end);
       start.setUTCDate(start.getUTCDate() - 1);
-      break;
-    case "week":
+      return { start, end };
+    }
+    case "week": {
+      end.setUTCHours(0, 0, 0, 0);
+      const dow = (end.getUTCDay() + 6) % 7;
+      end.setUTCDate(end.getUTCDate() - dow);
+      const start = new Date(end);
       start.setUTCDate(start.getUTCDate() - 7);
-      break;
-    case "month":
+      return { start, end };
+    }
+    case "month": {
+      end.setUTCHours(0, 0, 0, 0);
+      end.setUTCDate(1);
+      const start = new Date(end);
       start.setUTCMonth(start.getUTCMonth() - 1);
-      break;
-    case "quarter":
+      return { start, end };
+    }
+    case "quarter": {
+      end.setUTCHours(0, 0, 0, 0);
+      end.setUTCDate(1);
+      const month = end.getUTCMonth();
+      end.setUTCMonth(month - (month % 3));
+      const start = new Date(end);
       start.setUTCMonth(start.getUTCMonth() - 3);
-      break;
+      return { start, end };
+    }
     default:
       throw new Error(`unsupported granularity: ${String(data.granularity)}`);
   }
-
-  return { start, end };
 }
 
 function mapToRollupGranularity(g: PullJobData["granularity"]): RollupRefreshJobData["granularity"] {
