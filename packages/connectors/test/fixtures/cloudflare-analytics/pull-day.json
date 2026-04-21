@@ -1,0 +1,17 @@
+{
+  "data": {
+    "viewer": {
+      "zones": [
+        {
+          "httpRequests1dGroups": [
+            {
+              "dimensions": { "date": "2026-01-05" },
+              "sum": { "requests": 123456, "pageViews": 34567 },
+              "uniq": { "uniques": 8910 }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

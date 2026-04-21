@@ -16,13 +16,19 @@
   "dependencies": {
     "@hono/node-server": "^1.13.0",
     "@hono/zod-openapi": "^0.16.0",
+    "@hono/zod-validator": "^0.4.3",
     "@lwa/auth": "workspace:*",
+    "@lwa/connectors": "workspace:*",
     "@lwa/contracts": "workspace:*",
+    "@lwa/crypto": "workspace:*",
     "@lwa/db": "workspace:*",
+    "bullmq": "^5.13.0",
     "drizzle-orm": "^0.33.0",
     "hono": "^4.6.0",
+    "ioredis": "^5.4.1",
     "pino": "^9.4.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.24.6"
   },
   "devDependencies": {
     "@lwa/tsconfig": "workspace:*",

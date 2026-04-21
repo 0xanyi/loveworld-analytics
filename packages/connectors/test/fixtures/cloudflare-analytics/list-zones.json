@@ -1,0 +1,6 @@
+{
+  "result": [
+    { "id": "zone-abc", "name": "example.com" },
+    { "id": "zone-def", "name": "example.org" }
+  ]
+}

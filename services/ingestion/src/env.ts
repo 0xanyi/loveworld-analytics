@@ -9,6 +9,8 @@ const EnvSchema = z.object({
     .regex(/^postgres(ql)?:\/\//, "DATABASE_URL must be a postgres:// or postgresql:// URL"),
   REDIS_URL: z.string().regex(/^rediss?:\/\//, "REDIS_URL must be a redis:// or rediss:// URL"),
   INGESTION_CONCURRENCY: z.coerce.number().int().positive().default(4),
+  LWA_KEK_CURRENT: z.string().default("v1"),
+  LWA_KEK_V1: z.string().min(44),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

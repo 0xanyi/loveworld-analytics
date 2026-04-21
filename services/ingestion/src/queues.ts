@@ -9,19 +9,6 @@ export const QUEUES = {
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
 
-/**
- * Retry policies live with the queue names so that producers and consumers
- * share a single source of truth. BullMQ applies retry config at the producer
- * side (queue.add(..., options) or Queue's defaultJobOptions), not the worker
- * side — this worker is a consumer only.
- *
- * Rationale:
- *   PULL     : transient API failures are common; 5 attempts with exp backoff
- *              covers most rate-limit hiccups and TCP resets.
- *   BACKFILL : chunk jobs are expensive; retrying many times wastes work.
- *   ROLLUP   : pure DB-side; fast to retry, short backoff.
- *   HEALTH   : informational only; fail fast and re-run on next tick.
- */
 export const QUEUE_DEFAULTS = {
   PULL: {
     attempts: 5,
@@ -42,22 +29,36 @@ export const QUEUE_DEFAULTS = {
 
 export type PullJobData = {
   connectorConfigId: string;
-  periodStart: string; // ISO
-  periodEnd: string; // ISO
+  granularity: "hour" | "day" | "week" | "month" | "quarter";
+  periodStart?: string;
+  periodEnd?: string;
+  /**
+   * When set, the pull handler attributes the resulting `ingestion_run` row
+   * to this backfill, enabling idempotent progress accounting on
+   * `backfill_run.chunks_completed`. Live pulls leave these unset.
+   */
+  backfillRunId?: string;
+  chunkIndex?: number;
+};
+
+export type BackfillJobData = Required<
+  Pick<PullJobData, "backfillRunId" | "chunkIndex" | "periodStart" | "periodEnd">
+> & {
+  connectorConfigId: string;
   granularity: "hour" | "day" | "week" | "month" | "quarter";
 };
 
-export type BackfillJobData = PullJobData & {
-  backfillRunId: string;
-  chunkIndex: number;
-};
+// Deterministic BullMQ jobId for a backfill chunk lives in @lwa/contracts
+// so API producer and ingestion consumer share the exact same implementation.
+export { backfillChunkJobId } from "@lwa/contracts";
 
 export type RollupRefreshJobData = {
   tenantId: string;
   hierarchyNodeId: string;
   metricCategory: "tv_households" | "web_visitors" | "streaming" | "social_reach" | "engagement";
   granularity: "day" | "week" | "month" | "quarter";
-  bucketStart: string; // ISO
+  recordGranularity: "hour" | "day" | "week" | "month" | "quarter";
+  bucketStart: string;
 };
 
 export type HealthJobData = {

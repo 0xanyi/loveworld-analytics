@@ -1,0 +1,7 @@
+{
+  "extends": "@lwa/tsconfig/base",
+  "compilerOptions": {
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*", "test/**/*"]
+}

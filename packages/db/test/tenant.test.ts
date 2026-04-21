@@ -139,9 +139,16 @@ describe("seedSources", () => {
     await seedSources(db);
     const second = await db.query.source.findMany();
 
-    expect(first.length).toBe(10);
-    expect(second.length).toBe(10);
+    // 9 after Phase 1 dropped castnet_events (CastNet platform retiring).
+    expect(first.length).toBe(9);
+    expect(second.length).toBe(9);
     // Same rows — onConflictDoUpdate shouldn't create duplicates.
     expect(new Set(second.map((s) => s.key))).toEqual(new Set(first.map((s) => s.key)));
+  });
+
+  it("does not seed castnet_events (platform retiring)", async () => {
+    await seedSources(db);
+    const all = await db.query.source.findMany();
+    expect(all.find((s) => s.key === "castnet_events")).toBeUndefined();
   });
 });

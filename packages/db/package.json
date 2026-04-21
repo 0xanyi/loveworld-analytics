@@ -20,6 +20,7 @@
     "seed": "tsx --env-file-if-exists=../../.env src/seeds/run.ts"
   },
   "dependencies": {
+    "@lwa/crypto": "workspace:*",
     "drizzle-orm": "^0.33.0",
     "postgres": "^3.4.4"
   },

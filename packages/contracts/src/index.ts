@@ -4,3 +4,4 @@ export * from "./granularity";
 export * from "./connector-error";
 export * from "./metric-record";
 export * from "./source-connector";
+export * from "./backfill";

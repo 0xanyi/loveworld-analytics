@@ -4,6 +4,7 @@ import { loadEnv } from "../src/env";
 
 const VALID: NodeJS.ProcessEnv = {
   DATABASE_URL: "postgres://user:pw@localhost:5432/db",
+  REDIS_URL: "redis://localhost:6379",
   AUTH_SECRET: "a".repeat(32),
   AUTH_BASE_URL: "http://localhost:5173",
 };

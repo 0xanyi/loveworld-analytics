@@ -8,6 +8,41 @@
       "when": 1776712065951,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776722970645,
+      "tag": "0001_metrics",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776722970646,
+      "tag": "0002_effective_metric_view",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1776722970647,
+      "tag": "0003_drop_castnet_events_source",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1776722970648,
+      "tag": "0004_effective_metric_tiebreak",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1776757381359,
+      "tag": "0005_ingestion_run_backfill_tracking",
+      "breakpoints": true
     }
   ]
 }
