@@ -61,25 +61,25 @@ test("manual entry form can be submitted successfully", async ({ page }) => {
   await loginViaUi(page, user);
   await page.goto(`/${tenantSlug}/entry`);
 
-  // Source select should be visible; wait a tick for Svelte’s $effect to settle
+  // Wait for Source select to appear, then wait for network idle so that
+  // SvelteKit's client-side JS has fully settled before we fill the form.
   await expect(page.getByLabel("Source", { exact: true })).toBeVisible();
-  // Wait for Svelte to flush its initial effects before filling fields
-  await page.evaluate(() => new Promise((r) => setTimeout(r, 100)));
+  await page.waitForLoadState("networkidle");
 
-  // Select hierarchy node — label is "hierarchyNodeId *" (key used as label since no title)
+  // Select hierarchy node - label is "hierarchyNodeId *" (key used as label since no title)
   const hierarchyNodeId = nodeIds["station"]!;
   await page.getByLabel("hierarchyNodeId *").selectOption(hierarchyNodeId);
 
-  // Fill period start — nested field label override is "Start *"
+  // Fill period start - nested field label override is "Start *"
   await page.getByLabel("Start *").fill("2025-01-01");
 
-  // Fill period end — nested field label override is "End *"
+  // Fill period end - nested field label override is "End *"
   await page.getByLabel("End *").fill("2025-02-01");
 
-  // Fill households — label override is "Households Reached *"
+  // Fill households - label override is "Households Reached *"
   await page.getByLabel("Households Reached *").fill("5000");
 
-  // estimationMethod is a select — first option will be pre-selected, no need to change
+  // estimationMethod is a select - first option will be pre-selected, no need to change
 
   // Submit
   await page.getByRole("button", { name: "Submit" }).click();
