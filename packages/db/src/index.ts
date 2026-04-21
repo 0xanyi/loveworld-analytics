@@ -10,3 +10,4 @@ export { metricRecordRepo, hashDimensions, type MetricRecordDraft } from "./repo
 export { metricRollupRepo } from "./repositories/metric-rollup";
 export { platformAccountRepo } from "./repositories/platform-account";
 export { ingestionRunRepo } from "./repositories/ingestion-run";
+export { connectorConfigRepo } from "./repositories/connector-config";
