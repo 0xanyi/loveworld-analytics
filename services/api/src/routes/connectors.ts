@@ -35,7 +35,7 @@ export function connectorRoutes(db: Database, kek: KekProvider): Hono {
   const paRepo = platformAccountRepo(db);
 
   app.get("/tenants/:slug/connectors", requireCapability(db, "manage_connectors"), async (c) => {
-    const tenantCtx = c.get("tenant") as { tenantId: string };
+    const tenantCtx = c.get("tenant");
 
     const rows = await db
       .select({
@@ -60,7 +60,7 @@ export function connectorRoutes(db: Database, kek: KekProvider): Hono {
     requireCapability(db, "manage_connectors"),
     zValidator("json", createSchema),
     async (c) => {
-      const tenantCtx = c.get("tenant") as { tenantId: string };
+      const tenantCtx = c.get("tenant");
       const { connectorKey, schedule, credentials } = c.req.valid("json");
 
       const connector = registry.get(connectorKey);
@@ -89,7 +89,7 @@ export function connectorRoutes(db: Database, kek: KekProvider): Hono {
     "/tenants/:slug/connectors/:id/test",
     requireCapability(db, "manage_connectors"),
     async (c) => {
-      const tenantCtx = c.get("tenant") as { tenantId: string };
+      const tenantCtx = c.get("tenant");
       const id = c.req.param("id");
 
       const [cfg] = await db
@@ -116,7 +116,7 @@ export function connectorRoutes(db: Database, kek: KekProvider): Hono {
   );
 
   app.get("/tenants/:slug/connectors/:id/runs", requireCapability(db, "manage_connectors"), async (c) => {
-    const tenantCtx = c.get("tenant") as { tenantId: string };
+    const tenantCtx = c.get("tenant");
     const id = c.req.param("id");
 
     const [cfg] = await db
@@ -141,7 +141,7 @@ export function connectorRoutes(db: Database, kek: KekProvider): Hono {
     requireCapability(db, "manage_connectors"),
     zValidator("json", accountSchema),
     async (c) => {
-      const tenantCtx = c.get("tenant") as { tenantId: string };
+      const tenantCtx = c.get("tenant");
       const id = c.req.param("id");
       const payload = c.req.valid("json");
 

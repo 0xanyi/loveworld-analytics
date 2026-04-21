@@ -5,6 +5,7 @@ import { zValidator } from "@hono/zod-validator";
 import type { Database, MetricCategory } from "@lwa/db";
 import { metricRollup } from "@lwa/db";
 import { requireCapability } from "../middleware/rbac";
+import { isNodeInScope } from "../lib/hierarchy-scope";
 
 const querySchema = z.object({
   hierarchyNodeId: z.string().uuid(),
@@ -23,19 +24,19 @@ export function metricsRoutes(db: Database): Hono {
     requireCapability(db, "view_dashboard"),
     zValidator("query", querySchema),
     async (c) => {
-      const tenantCtx = c.get("tenant") as {
-        tenantId: string;
-        role: "network_admin" | "station_manager" | "board_viewer" | "analyst";
-        scopeNodeIds: string[];
-      };
+      const tenantCtx = c.get("tenant");
       const q = c.req.valid("query");
 
-      if (
-        tenantCtx.role === "station_manager" &&
-        tenantCtx.scopeNodeIds.length > 0 &&
-        !tenantCtx.scopeNodeIds.includes(q.hierarchyNodeId)
-      ) {
-        return c.json({ error: "forbidden", missing_capability: "view_dashboard" }, 403);
+      if (tenantCtx.role === "station_manager") {
+        const allowed = await isNodeInScope(
+          db,
+          tenantCtx.tenantId,
+          tenantCtx.scopeNodeIds,
+          q.hierarchyNodeId,
+        );
+        if (!allowed) {
+          return c.json({ error: "forbidden", missing_capability: "view_dashboard" }, 403);
+        }
       }
 
       const [cur, prev] = computeComparisonWindows(q.period, q.comparison);

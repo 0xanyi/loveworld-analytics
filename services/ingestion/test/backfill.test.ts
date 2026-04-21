@@ -8,6 +8,7 @@ import {
   connectorConfigRepo,
   backfillRun,
   hierarchyNode,
+  ingestionRun,
   platformAccount,
   source,
   tenant,
@@ -16,6 +17,7 @@ import {
 } from "@lwa/db";
 import { createTestDb } from "@lwa/db/test-utils";
 import { ConnectorRegistry } from "@lwa/connectors";
+import { err } from "@lwa/contracts";
 import { createBackfillHandler } from "../src/handlers/backfill";
 import { createRollupRefreshHandler } from "../src/handlers/rollup-refresh";
 import { QUEUES, type BackfillJobData, type RollupRefreshJobData } from "../src/queues";
@@ -118,14 +120,21 @@ describe("backfill handler", () => {
       const chunk = chunks[i];
       if (!chunk) continue;
 
-      await backfillQueue.add("backfill-chunk", {
-        connectorConfigId: ctx.cfgId,
-        backfillRunId: run!.id,
-        chunkIndex: i,
-        periodStart: chunk[0],
-        periodEnd: chunk[1],
-        granularity: "day",
-      });
+      await backfillQueue.add(
+        "backfill-chunk",
+        {
+          connectorConfigId: ctx.cfgId,
+          backfillRunId: run!.id,
+          chunkIndex: i,
+          periodStart: chunk[0],
+          periodEnd: chunk[1],
+          granularity: "day",
+        },
+        {
+          jobId: `bf:${run!.id}:${i}`,
+          removeOnComplete: true,
+        },
+      );
     }
 
     await waitFor(async () => {
@@ -145,9 +154,171 @@ describe("backfill handler", () => {
     await backfillWorker.close();
     await rollupWorker.close();
   }, 45_000);
+
+  it("marks backfill_run failed after terminal chunk failure", async () => {
+    const ctx = await seedCtx(db, "_stub_pull_fail");
+
+    const registry = new ConnectorRegistry();
+    registry.register(failingStubPullConnector);
+
+    const rollupWorker = new Worker(QUEUES.ROLLUP_REFRESH, createRollupRefreshHandler(db, silentLogger()), {
+      connection: redis,
+      prefix: queuePrefix,
+    });
+
+    const backfillWorker = new Worker(
+      QUEUES.BACKFILL,
+      createBackfillHandler({ db, registry, kek, rollupQueue, redis, logger: silentLogger(), rollupDelayMs: 0 }),
+      {
+        connection: redis,
+        prefix: queuePrefix,
+      },
+    );
+
+    const [run] = await db
+      .insert(backfillRun)
+      .values({
+        connectorConfigId: ctx.cfgId,
+        rangeStart: new Date("2026-02-01T00:00:00.000Z"),
+        rangeEnd: new Date("2026-02-08T00:00:00.000Z"),
+        chunkSizeDays: 7,
+        chunksTotal: 1,
+        chunksCompleted: 0,
+        startedByUserId: ctx.userId,
+        status: "running",
+      })
+      .returning();
+
+    await backfillQueue.add(
+      "backfill-chunk",
+      {
+        connectorConfigId: ctx.cfgId,
+        backfillRunId: run!.id,
+        chunkIndex: 0,
+        periodStart: "2026-02-01T00:00:00.000Z",
+        periodEnd: "2026-02-08T00:00:00.000Z",
+        granularity: "day",
+      },
+      {
+        jobId: `bf:${run!.id}:0`,
+        attempts: 1,
+        removeOnComplete: true,
+        removeOnFail: true,
+      },
+    );
+
+    await waitFor(async () => {
+      const r = await db.query.backfillRun.findFirst({ where: (b, { eq }) => eq(b.id, run!.id) });
+      return r?.status === "failed";
+    }, 20_000);
+
+    const refreshed = await db.query.backfillRun.findFirst({ where: (b, { eq }) => eq(b.id, run!.id) });
+    expect(refreshed?.status).toBe("failed");
+    expect(refreshed?.errorMessage).toContain("upstream exploded");
+
+    await backfillWorker.close();
+    await rollupWorker.close();
+  }, 45_000);
+
+  it("does not overcount chunks under at-least-once redelivery of the same chunk", async () => {
+    // At-least-once delivery in BullMQ keeps the same jobId across attempts,
+    // so we simulate the state the DB ends up in after redelivery by
+    // directly seeding multiple ingestion_run rows for the SAME
+    // (backfill_run_id, chunk_index). The handler's recomputeProgress must
+    // count that as a single completed chunk.
+    const ctx = await seedCtx(db);
+
+    const registry = new ConnectorRegistry();
+    registry.register(stubPullConnector);
+
+    const rollupWorker = new Worker(QUEUES.ROLLUP_REFRESH, createRollupRefreshHandler(db, silentLogger()), {
+      connection: redis,
+      prefix: queuePrefix,
+    });
+
+    const backfillWorker = new Worker(
+      QUEUES.BACKFILL,
+      createBackfillHandler({ db, registry, kek, rollupQueue, redis, logger: silentLogger(), rollupDelayMs: 0 }),
+      {
+        connection: redis,
+        prefix: queuePrefix,
+      },
+    );
+
+    const [run] = await db
+      .insert(backfillRun)
+      .values({
+        connectorConfigId: ctx.cfgId,
+        rangeStart: new Date("2026-03-01T00:00:00.000Z"),
+        rangeEnd: new Date("2026-03-15T00:00:00.000Z"),
+        chunkSizeDays: 7,
+        chunksTotal: 2,
+        chunksCompleted: 0,
+        startedByUserId: ctx.userId,
+        status: "running",
+      })
+      .returning();
+
+    // Seed: chunk 0 was delivered twice (same jobId), succeeded both times
+    // (e.g. worker crashed after writing ingestion_run, was retried). Both
+    // rows share (backfill_run_id, chunk_index) = (run.id, 0).
+    await db.insert(ingestionRun).values([
+      {
+        connectorConfigId: ctx.cfgId,
+        periodStart: new Date("2026-03-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-03-08T00:00:00.000Z"),
+        status: "success",
+        bullmqJobId: `bf:${run!.id}:0`,
+        backfillRunId: run!.id,
+        chunkIndex: 0,
+        recordsWritten: 1,
+      },
+      {
+        connectorConfigId: ctx.cfgId,
+        periodStart: new Date("2026-03-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-03-08T00:00:00.000Z"),
+        status: "success",
+        bullmqJobId: `bf:${run!.id}:0`,
+        backfillRunId: run!.id,
+        chunkIndex: 0,
+        recordsWritten: 1,
+      },
+    ]);
+
+    // Now run chunk 1 through the real handler. The handler recomputes
+    // progress from ingestion_run; it must see chunk 0 as exactly one
+    // completed chunk (DISTINCT on chunk_index) + chunk 1 we're processing.
+    await backfillQueue.add(
+      "backfill-chunk",
+      {
+        connectorConfigId: ctx.cfgId,
+        backfillRunId: run!.id,
+        chunkIndex: 1,
+        periodStart: "2026-03-08T00:00:00.000Z",
+        periodEnd: "2026-03-15T00:00:00.000Z",
+        granularity: "day",
+      },
+      {
+        jobId: `bf:${run!.id}:1`,
+        removeOnComplete: true,
+      },
+    );
+
+    await waitFor(async () => {
+      const r = await db.query.backfillRun.findFirst({ where: (b, { eq }) => eq(b.id, run!.id) });
+      return r?.status === "completed";
+    }, 20_000);
+
+    const refreshed = await db.query.backfillRun.findFirst({ where: (b, { eq }) => eq(b.id, run!.id) });
+    expect(refreshed?.chunksCompleted).toBe(2);
+    expect(refreshed?.status).toBe("completed");
+
+    await backfillWorker.close();
+    await rollupWorker.close();
+  }, 45_000);
 });
 
-async function seedCtx(db: Database) {
+async function seedCtx(db: Database, sourceKey = "_stub_pull") {
   const suffix = crypto.randomUUID().slice(0, 8);
 
   const [t] = await db.insert(tenant).values({ name: `Backfill-${suffix}`, slug: `bf-${suffix}` }).returning();
@@ -163,11 +334,11 @@ async function seedCtx(db: Database) {
 
   const [src] = await db
     .insert(source)
-    .values({ key: `_stub_pull`, name: "Stub", category: "web", authMethod: "none" })
+    .values({ key: sourceKey, name: "Stub", category: "web", authMethod: "none" })
     .onConflictDoNothing({ target: source.key })
     .returning();
 
-  const sourceRow = src ?? (await db.query.source.findFirst({ where: (s, { eq }) => eq(s.key, "_stub_pull") }));
+  const sourceRow = src ?? (await db.query.source.findFirst({ where: (s, { eq }) => eq(s.key, sourceKey) }));
 
   const cfg = await connectorConfigRepo(db, kek).create({
     tenantId: t!.id,
@@ -186,6 +357,17 @@ async function seedCtx(db: Database) {
 
   return { tenantId: t!.id, cfgId: cfg.id, userId: u!.id };
 }
+
+const failingStubPullConnector = {
+  ...stubPullConnector,
+  key: "_stub_pull_fail",
+  pull: async () =>
+    err({
+      code: "CONFIG_INVALID" as const,
+      message: "upstream exploded",
+      retryable: false,
+    }),
+};
 
 function silentLogger() {
   return {

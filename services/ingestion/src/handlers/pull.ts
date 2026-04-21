@@ -70,6 +70,8 @@ export function createPullHandler(deps: PullHandlerDeps) {
       periodStart: period.start,
       periodEnd: period.end,
       jobId: job.id?.toString(),
+      backfillRunId: job.data.backfillRunId,
+      chunkIndex: job.data.chunkIndex,
     });
 
     let finished = false;

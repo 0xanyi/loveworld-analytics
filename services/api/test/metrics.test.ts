@@ -93,6 +93,47 @@ describe("metrics routes", () => {
 
     expect(res.status).toBe(403);
   });
+
+  it("station_manager can query descendant node within scope subtree", async () => {
+    const ctx = await seedCtx(db, "station_manager");
+    const app = buildApp({ db, auth: testAuth() });
+
+    const [childNode] = await db
+      .insert(hierarchyNode)
+      .values({
+        tenantId: ctx.tenantId,
+        type: "broadcast_channel",
+        parentId: ctx.nodeId,
+        name: "Child",
+        slug: `child-${crypto.randomUUID().slice(0, 8)}`,
+      })
+      .returning();
+
+    const now = new Date();
+    const bucketStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+
+    await db.insert(metricRollup).values({
+      tenantId: ctx.tenantId,
+      hierarchyNodeId: childNode!.id,
+      metricCategory: "tv_households",
+      granularity: "day",
+      bucketStart,
+      effectiveTotal: "10",
+      rawTotal: "10",
+      recordCount: 1,
+      sourceBreakdown: { manual_satellite: 10 },
+      hasAdjustments: false,
+    });
+
+    const res = await app.request(
+      `/tenants/${ctx.slug}/metrics/board?hierarchyNodeId=${childNode!.id}&period=week&granularity=day&comparison=none`,
+      {
+        headers: { "x-test-user-id": ctx.userId },
+      },
+    );
+
+    expect(res.status).toBe(200);
+  });
 });
 
 function testAuth(): Auth {

@@ -18,7 +18,7 @@ export function hierarchyRoutes(db: Database): Hono {
   const app = new Hono();
 
   app.get("/tenants/:slug/hierarchy", requireCapability(db, "view_dashboard"), async (c) => {
-    const tenantCtx = c.get("tenant") as { tenantId: string };
+    const tenantCtx = c.get("tenant");
     const rows = await db
       .select()
       .from(hierarchyNode)
@@ -31,7 +31,7 @@ export function hierarchyRoutes(db: Database): Hono {
     requireCapability(db, "edit_hierarchy"),
     zValidator("json", nodeInput),
     async (c) => {
-      const tenantCtx = c.get("tenant") as { tenantId: string };
+      const tenantCtx = c.get("tenant");
       const body = c.req.valid("json");
 
       if (body.parentId) {
@@ -70,7 +70,7 @@ export function hierarchyRoutes(db: Database): Hono {
     requireCapability(db, "edit_hierarchy"),
     zValidator("json", nodeInput.partial()),
     async (c) => {
-      const tenantCtx = c.get("tenant") as { tenantId: string };
+      const tenantCtx = c.get("tenant");
       const id = c.req.param("id");
       const body = c.req.valid("json");
 
@@ -101,7 +101,7 @@ export function hierarchyRoutes(db: Database): Hono {
   );
 
   app.delete("/tenants/:slug/hierarchy/:id", requireCapability(db, "edit_hierarchy"), async (c) => {
-    const tenantCtx = c.get("tenant") as { tenantId: string };
+    const tenantCtx = c.get("tenant");
     const id = c.req.param("id");
 
     const [row] = await db

@@ -3,12 +3,22 @@ import type { Database } from "../client";
 import { ingestionRun, type IngestionRun } from "../schema";
 
 export interface IngestionRunRepo {
-  /** Creates a `running` run; returns it so the caller owns the id. */
+  /**
+   * Creates a `running` run; returns it so the caller owns the id.
+   *
+   * `backfillRunId` / `chunkIndex` should be set when the run represents a
+   * single chunk of an admin-initiated backfill. They power completion
+   * accounting on `backfill_run.chunks_completed` (see
+   * `backfillRunRepo.recomputeProgress`) and make that accounting
+   * idempotent under at-least-once delivery.
+   */
   start(input: {
     connectorConfigId: string;
     periodStart: Date;
     periodEnd: Date;
     jobId?: string;
+    backfillRunId?: string;
+    chunkIndex?: number;
   }): Promise<IngestionRun>;
 
   /** Writes terminal state. Call exactly once per `start()`. */
@@ -27,7 +37,7 @@ export interface IngestionRunRepo {
 
 export function ingestionRunRepo(db: Database): IngestionRunRepo {
   return {
-    async start({ connectorConfigId, periodStart, periodEnd, jobId }) {
+    async start({ connectorConfigId, periodStart, periodEnd, jobId, backfillRunId, chunkIndex }) {
       const [row] = await db
         .insert(ingestionRun)
         .values({
@@ -36,6 +46,8 @@ export function ingestionRunRepo(db: Database): IngestionRunRepo {
           periodEnd,
           status: "running",
           bullmqJobId: jobId,
+          backfillRunId,
+          chunkIndex,
         })
         .returning();
       if (!row) {

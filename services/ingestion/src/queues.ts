@@ -32,16 +32,25 @@ export type PullJobData = {
   granularity: "hour" | "day" | "week" | "month" | "quarter";
   periodStart?: string;
   periodEnd?: string;
+  /**
+   * When set, the pull handler attributes the resulting `ingestion_run` row
+   * to this backfill, enabling idempotent progress accounting on
+   * `backfill_run.chunks_completed`. Live pulls leave these unset.
+   */
+  backfillRunId?: string;
+  chunkIndex?: number;
 };
 
-export type BackfillJobData = {
+export type BackfillJobData = Required<
+  Pick<PullJobData, "backfillRunId" | "chunkIndex" | "periodStart" | "periodEnd">
+> & {
   connectorConfigId: string;
   granularity: "hour" | "day" | "week" | "month" | "quarter";
-  periodStart: string;
-  periodEnd: string;
-  backfillRunId: string;
-  chunkIndex: number;
 };
+
+// Deterministic BullMQ jobId for a backfill chunk lives in @lwa/contracts
+// so API producer and ingestion consumer share the exact same implementation.
+export { backfillChunkJobId } from "@lwa/contracts";
 
 export type RollupRefreshJobData = {
   tenantId: string;

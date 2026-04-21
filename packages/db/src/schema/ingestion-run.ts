@@ -1,5 +1,6 @@
 import { pgTable, uuid, text, integer, jsonb, timestamp, pgEnum, index } from "drizzle-orm/pg-core";
 import { connectorConfig } from "./connector-config";
+import { backfillRun } from "./backfill-run";
 
 export const ingestionRunStatusEnum = pgEnum("ingestion_run_status", [
   "pending",
@@ -38,9 +39,15 @@ export const ingestionRun = pgTable(
     errorMessage: text("error_message"),
     warnings: jsonb("warnings").$type<string[]>().default([]).notNull(),
     bullmqJobId: text("bullmq_job_id"),
+    // Set on backfill chunk runs so completion accounting can dedupe by
+    // (backfill_run_id, chunk_index) instead of a jobId string convention.
+    // Null for live/scheduled pulls.
+    backfillRunId: uuid("backfill_run_id").references(() => backfillRun.id),
+    chunkIndex: integer("chunk_index"),
   },
   (t) => ({
     configIdx: index("ingestion_run_config_idx").on(t.connectorConfigId, t.startedAt),
+    backfillIdx: index("ingestion_run_backfill_idx").on(t.backfillRunId, t.chunkIndex),
   }),
 );
 
