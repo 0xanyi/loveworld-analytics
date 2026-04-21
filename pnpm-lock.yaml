@@ -38,6 +38,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@lwa/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@lwa/ui':
         specifier: workspace:*
         version: link:../../packages/ui
