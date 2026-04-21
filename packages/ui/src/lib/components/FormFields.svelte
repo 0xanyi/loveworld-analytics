@@ -1,5 +1,5 @@
 <script context="module" lang="ts">
-  type FieldOverride = {
+  export type FieldOverride = {
     options: { value: string; label: string }[];
   };
 
@@ -46,7 +46,7 @@
           {id}
           type="checkbox"
           checked={flat[node.path] === true}
-          on:click={() => { flat[node.path] = !(flat[node.path] === true); }}
+          on:change={(e) => { flat[node.path] = (e.target as HTMLInputElement).checked; }}
         />
       </div>
     {:else if node.enum}

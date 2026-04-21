@@ -92,6 +92,52 @@ describe("FormFromSchema", () => {
     expect(onSubmit).toHaveBeenCalledWith({ hierarchyNodeId: "node-2" });
   });
 
+  it("select with no initialValue submits the first visible option", async () => {
+    const onSubmit = vi.fn();
+
+    render(FormFromSchema, {
+      schema: {
+        type: "object",
+        properties: {
+          mode: { type: "string", enum: ["fast", "slow"], title: "Mode" },
+        },
+      },
+      onSubmit,
+    });
+
+    // No user interaction — submit immediately.
+    await fireEvent.submit(screen.getByRole("button", { name: "Submit" }).closest("form")!);
+
+    // Payload must match the visually selected first option, not "".
+    expect(onSubmit).toHaveBeenCalledWith({ mode: "fast" });
+  });
+
+  it("override select with no initialValue submits the first visible option", async () => {
+    const onSubmit = vi.fn();
+
+    render(FormFromSchema, {
+      schema: {
+        type: "object",
+        properties: {
+          tier: { type: "string", title: "Tier" },
+        },
+      },
+      overrides: {
+        tier: {
+          options: [
+            { value: "gold", label: "Gold" },
+            { value: "silver", label: "Silver" },
+          ],
+        },
+      },
+      onSubmit,
+    });
+
+    await fireEvent.submit(screen.getByRole("button", { name: "Submit" }).closest("form")!);
+
+    expect(onSubmit).toHaveBeenCalledWith({ tier: "gold" });
+  });
+
   it("renders nested enum, boolean, integer, and deeper objects recursively", async () => {
     const onSubmit = vi.fn();
 

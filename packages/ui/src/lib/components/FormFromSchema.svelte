@@ -1,6 +1,6 @@
 <script lang="ts">
   import FormFields from "./FormFields.svelte";
-  import type { RenderNode } from "./FormFields.svelte";
+  import type { FieldOverride, RenderNode } from "./FormFields.svelte";
 
   type JsonSchemaProperty = {
     type: "string" | "integer" | "number" | "boolean" | "object";
@@ -14,10 +14,6 @@
     type: "object";
     properties?: Record<string, JsonSchemaProperty>;
     required?: string[];
-  };
-
-  type FieldOverride = {
-    options: { value: string; label: string }[];
   };
 
   export let schema: JsonSchema;
@@ -88,6 +84,22 @@
   const renderNodes: RenderNode[] = schema.properties
     ? collectNodes(schema.properties, schema.required, "")
     : [];
+
+  // Align select state with first visible option when no initialValue was given.
+  function initSelectDefaults(nodes: RenderNode[]) {
+    for (const node of nodes) {
+      if (node.kind === "group") {
+        initSelectDefaults(node.children);
+      } else if (flat[node.path] === "") {
+        if (node.enum && node.enum.length > 0) {
+          flat[node.path] = node.enum[0]!;
+        } else if (node.override && node.override.options.length > 0) {
+          flat[node.path] = node.override.options[0]!.value;
+        }
+      }
+    }
+  }
+  initSelectDefaults(renderNodes);
 
   // ── submission ────────────────────────────────────────────────────────────────
   function buildNested(paths: Record<string, FlatValue>): Record<string, unknown> {
