@@ -15,7 +15,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@google-analytics/data": "^4.12.0",
     "@lwa/contracts": "workspace:*",
+    "google-auth-library": "^9.15.1",
     "undici": "^6.19.0",
     "zod": "^3.23.8"
   },
