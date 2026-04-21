@@ -223,6 +223,9 @@ importers:
       '@hono/zod-openapi':
         specifier: ^0.16.0
         version: 0.16.4(hono@4.12.14)(zod@3.25.76)
+      '@hono/zod-validator':
+        specifier: ^0.4.3
+        version: 0.4.3(hono@4.12.14)(zod@3.25.76)
       '@lwa/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -232,21 +235,33 @@ importers:
       '@lwa/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@lwa/crypto':
+        specifier: workspace:*
+        version: link:../../packages/crypto
       '@lwa/db':
         specifier: workspace:*
         version: link:../../packages/db
+      bullmq:
+        specifier: ^5.13.0
+        version: 5.75.2
       drizzle-orm:
         specifier: ^0.33.0
         version: 0.33.0(@opentelemetry/api@1.9.1)(kysely@0.28.16)(postgres@3.4.9)
       hono:
         specifier: ^4.6.0
         version: 4.12.14
+      ioredis:
+        specifier: ^5.4.1
+        version: 5.10.1
       pino:
         specifier: ^9.4.0
         version: 9.14.0
       zod:
         specifier: ^3.23.8
         version: 3.25.76
+      zod-to-json-schema:
+        specifier: ^3.24.6
+        version: 3.25.2(zod@3.25.76)
     devDependencies:
       '@lwa/tsconfig':
         specifier: workspace:*
@@ -1050,6 +1065,12 @@ packages:
 
   '@hono/zod-validator@0.3.0':
     resolution: {integrity: sha512-7XcTk3yYyk6ldrO/VuqsroE7stvDZxHJQcpATRAyha8rUxJNBPV3+6waDrARfgEqxOVlzIadm3/6sE/dPseXgQ==}
+    peerDependencies:
+      hono: '>=3.9.0'
+      zod: ^3.19.1
+
+  '@hono/zod-validator@0.4.3':
+    resolution: {integrity: sha512-xIgMYXDyJ4Hj6ekm9T9Y27s080Nl9NXHcJkOvkXPhubOLj8hZkOL8pDnnXfvCf5xEE8Q4oMFenQUZZREUY2gqQ==}
     peerDependencies:
       hono: '>=3.9.0'
       zod: ^3.19.1
@@ -3492,6 +3513,11 @@ packages:
     resolution: {integrity: sha512-zK7YHHz4ZXpW89AHXUPbQVGKI7uvkd3hzusTdotCg1UxyaVtg0zFJSTfW/Dq5f7OBBVnq6cZIaC8Ti4hb6dtCA==}
     engines: {node: '>= 14'}
 
+  zod-to-json-schema@3.25.2:
+    resolution: {integrity: sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA==}
+    peerDependencies:
+      zod: ^3.25.28 || ^4
+
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
@@ -3941,6 +3967,11 @@ snapshots:
       zod: 3.25.76
 
   '@hono/zod-validator@0.3.0(hono@4.12.14)(zod@3.25.76)':
+    dependencies:
+      hono: 4.12.14
+      zod: 3.25.76
+
+  '@hono/zod-validator@0.4.3(hono@4.12.14)(zod@3.25.76)':
     dependencies:
       hono: 4.12.14
       zod: 3.25.76
@@ -6417,6 +6448,10 @@ snapshots:
       archiver-utils: 5.0.2
       compress-commons: 6.0.2
       readable-stream: 4.7.0
+
+  zod-to-json-schema@3.25.2(zod@3.25.76):
+    dependencies:
+      zod: 3.25.76
 
   zod@3.25.76: {}
 

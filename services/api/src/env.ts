@@ -10,6 +10,7 @@ const EnvSchema = z.object({
   API_PORT: z.coerce.number().default(3001),
   AUTH_SECRET: z.string().min(32),
   AUTH_BASE_URL: z.string().url(),
+  REDIS_URL: z.string().regex(/^rediss?:\/\//, "REDIS_URL must be a redis:// or rediss:// URL"),
   SMTP_HOST: z.string().default(""),
   SMTP_PORT: z.coerce.number().default(587),
   SMTP_USER: z.string().default(""),

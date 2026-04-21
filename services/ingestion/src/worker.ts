@@ -7,7 +7,7 @@ import { registry } from "@lwa/connectors";
 import { loadEnv } from "./env";
 import { QUEUES } from "./queues";
 import { createPullHandler } from "./handlers/pull";
-import { backfillHandler } from "./handlers/backfill";
+import { createBackfillHandler } from "./handlers/backfill";
 import { createRollupRefreshHandler } from "./handlers/rollup-refresh";
 import { healthHandler } from "./handlers/health";
 import { startScheduler } from "./scheduler";
@@ -30,13 +30,14 @@ const kek = envKekProvider({
 const pullQueue = new Queue(QUEUES.PULL, { connection });
 const rollupQueue = new Queue(QUEUES.ROLLUP_REFRESH, { connection });
 
+const handlerDeps = { db, registry, kek, rollupQueue, redis: connection, logger };
+
 const workers = [
-  new Worker(
-    QUEUES.PULL,
-    createPullHandler({ db, registry, kek, rollupQueue, redis: connection, logger }),
-    { connection, concurrency: env.INGESTION_CONCURRENCY },
-  ),
-  new Worker(QUEUES.BACKFILL, backfillHandler, {
+  new Worker(QUEUES.PULL, createPullHandler(handlerDeps), {
+    connection,
+    concurrency: env.INGESTION_CONCURRENCY,
+  }),
+  new Worker(QUEUES.BACKFILL, createBackfillHandler(handlerDeps), {
     connection,
     concurrency: 1,
   }),
