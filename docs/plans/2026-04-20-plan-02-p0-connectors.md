@@ -28,19 +28,21 @@
 
 | # | Task | Depends on | Checkpoint |
 |---|---|---|---|
-| 1 | `@lwa/db` — metric fact/rollup tables + `effective_metric` view + repositories + drop orphaned `castnet_events` seed | — |   |
-| 2 | `@lwa/connectors` — new package + enriched `PullInput`/`ManualInput` contracts + contract test harness | 1 |   |
-| 3 | `@lwa/crypto` — AES-256-GCM KEK/DEK service + wire into `connector_config` repo | 1 |   |
-| 4 | Ingestion pipeline — pull handler wiring, scheduler, rollup.refresh, ingestion_run tracking, error-code → retry mapping | 1, 2, 3 | **✅ After Task 4: end-to-end with a stub connector: pull → metric_record → metric_rollup. Confirm before building real connectors.** |
-| 5 | `manual_satellite` + `manual_freeview` connectors + `POST /api/tenants/:slug/entries` | 2 |   |
-| 6 | `cloudflare_analytics` connector (GraphQL) | 2, 3 |   |
-| 7 | `ga4` connector (service-account JWT) | 2, 3 | **✅ After Task 7: contract-suite green for all 4 P0 connectors; each validates credentials + returns a non-empty `pull` result against recorded fixtures. Confirm before building UI.** |
-| 8 | API: connector management + hierarchy CRUD + backfill endpoint + RBAC middleware | 4, 5, 6, 7 |   |
-| 9 | Hierarchy management UI + tenant switcher root page | 8 |   |
-| 10 | Dashboard: `<KpiTile>` + `<PeriodPicker>` + `<ComparisonPicker>` + TV-households + Web tiles | 4, 8 |   |
-| 11 | Manual entry UI + source health list + `admin:set-password` CLI + Phase 1 gate smoke script | 5, 8, 9, 10 | **✅ Phase 1 gate: `pnpm phase1:gate` seeds tenant, feeds 1 week of fixture data through each P0 connector, asserts board tiles render non-zero.** |
+| 1 | `@lwa/db` — metric fact/rollup tables + `effective_metric` view + repositories + drop orphaned `castnet_events` seed | — | ✅ Implemented |
+| 2 | `@lwa/connectors` — new package + enriched `PullInput`/`ManualInput` contracts + contract test harness | 1 | ✅ Implemented |
+| 3 | `@lwa/crypto` — AES-256-GCM KEK/DEK service + wire into `connector_config` repo | 1 | ✅ Implemented |
+| 4 | Ingestion pipeline — pull handler wiring, scheduler, rollup.refresh, ingestion_run tracking, error-code → retry mapping | 1, 2, 3 | ✅ Implemented — end-to-end stub pipeline test covers pull → metric_record → metric_rollup |
+| 5 | `manual_satellite` + `manual_freeview` connectors + `POST /api/tenants/:slug/entries` | 2 | ✅ Implemented |
+| 6 | `cloudflare_analytics` connector (GraphQL) | 2, 3 | ✅ Implemented |
+| 7 | `ga4` connector (service-account JWT) | 2, 3 | ✅ Implemented — contract-suite/tests present for all 4 shipped P0 connectors |
+| 8 | API: connector management + hierarchy CRUD + backfill endpoint + RBAC middleware | 4, 5, 6, 7 | ✅ Implemented |
+| 9 | Hierarchy management UI + tenant switcher root page | 8 | ⏳ Not done — only the Phase 0 tenant shell exists |
+| 10 | Dashboard: `<KpiTile>` + `<PeriodPicker>` + `<ComparisonPicker>` + TV-households + Web tiles | 4, 8 | ⏳ Not done — metrics API exists, dashboard UI does not |
+| 11 | Manual entry UI + source health list + `admin:set-password` CLI + Phase 1 gate smoke script | 5, 8, 9, 10 | ⏳ Not done — API pieces exist, but UI/CLI/gate are still missing |
 
 Each task ends with: `pnpm -w turbo lint typecheck test`, then `git commit`. Phase 1 is done when Task 11 lands on `main`, `phase1:gate` is green in CI, and one LW Europe admin has completed the end-to-end runbook against staging.
+
+**Status audit (2026-04-21):** Tasks 1–8 are already implemented in the repo. Tasks 9–11 remain open. The web app is still at the Phase 0 shell level, while the backend/API/connector/ingestion work for early Phase 1 is largely complete.
 
 ---
 
