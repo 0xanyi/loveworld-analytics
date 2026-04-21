@@ -25,10 +25,10 @@ interface MeResponse {
 }
 
 /**
- * Fetches /me and returns the parsed response, or null if unauthenticated.
- * Throws on unexpected server errors.
+ * Fetches /me and returns the full parsed response (user + memberships),
+ * or null if unauthenticated. Throws on unexpected server errors.
  */
-export async function loadCurrentUser(
+export async function loadMeResponse(
   cookies: Cookies,
 ): Promise<MeResponse | null> {
   const res = await serverApiFetch("/me", { cookies });
@@ -46,20 +46,20 @@ export async function loadCurrentUser(
 export async function loadMemberships(
   cookies: Cookies,
 ): Promise<Membership[] | null> {
-  const me = await loadCurrentUser(cookies);
+  const me = await loadMeResponse(cookies);
   return me?.memberships ?? null;
 }
 
 /**
  * Ensures the user is authenticated and has at least one membership.
- * Redirects to /login if unauthenticated.
- * Returns the memberships array.
+ * Redirects to /login if unauthenticated or if the user belongs to no tenant.
+ * Returns the non-empty memberships array.
  */
 export async function requireMembershipsOrRedirect(
   cookies: Cookies,
 ): Promise<Membership[]> {
   const memberships = await loadMemberships(cookies);
-  if (memberships === null) {
+  if (!memberships || memberships.length === 0) {
     redirect(303, "/login");
   }
   return memberships;
