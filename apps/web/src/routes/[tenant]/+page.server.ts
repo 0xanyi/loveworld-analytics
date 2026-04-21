@@ -1,4 +1,4 @@
-import { error } from "@sveltejs/kit";
+import { error, redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import { serverApiFetch } from "$lib/server/api";
 import { findDefaultHierarchyNodeId, type DashboardTile, type HierarchyNodeRecord } from "$lib/hierarchy";
@@ -15,12 +15,18 @@ export const load: PageServerLoad = async ({ params, cookies, url }) => {
     : "none";
 
   const hierarchyRes = await serverApiFetch(`/tenants/${params.tenant}/hierarchy`, { cookies });
+  if (hierarchyRes.status === 401) {
+    throw redirect(303, "/login");
+  }
   if (!hierarchyRes.ok) {
-    error(hierarchyRes.status, "Failed to load tenant hierarchy");
+    throw error(hierarchyRes.status, "Failed to load tenant hierarchy");
   }
 
   const hierarchyBody = (await hierarchyRes.json()) as { nodes: HierarchyNodeRecord[] };
-  const selectedNodeId = url.searchParams.get("hierarchyNodeId") ?? findDefaultHierarchyNodeId(hierarchyBody.nodes);
+  const requestedNodeId = url.searchParams.get("hierarchyNodeId");
+  const selectedNodeId = requestedNodeId && isValidSelectedNode(requestedNodeId, hierarchyBody.nodes)
+    ? requestedNodeId
+    : findDefaultHierarchyNodeId(hierarchyBody.nodes);
 
   if (!selectedNodeId) {
     return {
@@ -44,8 +50,11 @@ export const load: PageServerLoad = async ({ params, cookies, url }) => {
     cookies,
   });
 
+  if (metricsRes.status === 401) {
+    throw redirect(303, "/login");
+  }
   if (!metricsRes.ok) {
-    error(metricsRes.status, "Failed to load dashboard metrics");
+    throw error(metricsRes.status, "Failed to load dashboard metrics");
   }
 
   const metricsBody = (await metricsRes.json()) as { tiles: DashboardTile[] };
@@ -59,3 +68,8 @@ export const load: PageServerLoad = async ({ params, cookies, url }) => {
     tiles: metricsBody.tiles,
   };
 };
+
+function isValidSelectedNode(nodeId: string, nodes: HierarchyNodeRecord[]) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(nodeId)
+    && nodes.some((node) => node.id === nodeId);
+}

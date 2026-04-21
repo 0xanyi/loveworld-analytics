@@ -93,7 +93,8 @@ for (const tenantSeed of input.tenants) {
   });
 
   for (const metricSeed of tenantSeed.metrics ?? []) {
-    const bucketStart = new Date(Date.UTC(2026, 3, 20));
+    const now = new Date();
+    const bucketStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
     const hierarchyNodeId = nodeIds[metricSeed.hierarchyKey];
     if (!hierarchyNodeId) {
       throw new Error(`missing metric hierarchy key: ${metricSeed.hierarchyKey}`);

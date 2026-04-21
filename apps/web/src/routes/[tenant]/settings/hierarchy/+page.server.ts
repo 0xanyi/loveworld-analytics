@@ -6,7 +6,7 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
   const res = await serverApiFetch(`/tenants/${params.tenant}/hierarchy`, { cookies });
 
   if (!res.ok) {
-    error(res.status, "Failed to load hierarchy");
+    throw error(res.status, "Failed to load hierarchy");
   }
 
   const body = (await res.json()) as { nodes: unknown[] };

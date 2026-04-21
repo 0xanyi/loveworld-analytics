@@ -19,6 +19,10 @@ export type DashboardTile = {
   hasAdjustments: boolean;
 };
 
+function compareHierarchyNodes(a: HierarchyNodeRecord, b: HierarchyNodeRecord) {
+  return a.name.localeCompare(b.name) || a.type.localeCompare(b.type) || a.id.localeCompare(b.id);
+}
+
 export function buildHierarchyTree(nodes: HierarchyNodeRecord[]): TreeNode[] {
   const byId = new Map<string, TreeNode>();
 
@@ -38,6 +42,15 @@ export function buildHierarchyTree(nodes: HierarchyNodeRecord[]): TreeNode[] {
       roots.push(node);
     }
   }
+
+  const sortTree = (treeNodes: TreeNode[]) => {
+    treeNodes.sort(compareHierarchyNodes);
+    for (const node of treeNodes) {
+      sortTree(node.children);
+    }
+  };
+
+  sortTree(roots);
 
   return roots;
 }

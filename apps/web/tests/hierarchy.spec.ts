@@ -25,11 +25,19 @@ test("network admin can create, rename, and archive hierarchy nodes", async ({ p
   await page.getByRole("button", { name: "Create node" }).click();
   await expect(page.getByText("Broadcast West")).toBeVisible();
 
-  await page.getByRole("button", { name: "Rename" }).nth(1).click();
+  const broadcastWestCard = page.locator("div.rounded-lg.border.p-3", {
+    has: page.getByText("Broadcast West", { exact: true }),
+  });
+
+  await broadcastWestCard.getByRole("button", { name: "Rename" }).click();
   await page.getByLabel("New name").fill("Broadcast West Updated");
   await page.getByRole("button", { name: "Save name" }).click();
-  await expect(page.getByText("Broadcast West Updated")).toBeVisible();
+  await expect(page.getByText("Broadcast West Updated", { exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Archive" }).nth(1).click();
-  await expect(page.getByText("Broadcast West Updated")).toHaveCount(0);
+  const updatedBroadcastWestCard = page.locator("div.rounded-lg.border.p-3", {
+    has: page.getByText("Broadcast West Updated", { exact: true }),
+  });
+
+  await updatedBroadcastWestCard.getByRole("button", { name: "Archive" }).click();
+  await expect(page.getByText("Broadcast West Updated", { exact: true })).toHaveCount(0);
 });

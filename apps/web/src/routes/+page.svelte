@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Button, Card } from "@lwa/ui";
+  import { Card } from "@lwa/ui";
   let { data } = $props();
 </script>
 
