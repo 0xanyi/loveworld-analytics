@@ -42,3 +42,7 @@ test-results/
 
 # DB & queue data (local docker)
 .data/
+
+# Local-only Docker Compose overrides (e.g. port remaps for dev machines
+# with conflicting services). See README "Port conflicts".
+docker-compose.override.yml
