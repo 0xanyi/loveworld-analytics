@@ -138,6 +138,45 @@ describe("FormFromSchema", () => {
     expect(onSubmit).toHaveBeenCalledWith({ tier: "gold" });
   });
 
+  it("omits untouched optional blank fields on submit", async () => {
+    const onSubmit = vi.fn();
+
+    render(FormFromSchema, {
+      schema: {
+        type: "object",
+        required: ["name"],
+        properties: {
+          name: { type: "string", title: "Name" },
+          sourceDocumentUrl: { type: "string", title: "Source document URL" },
+          barbWeekNumber: { type: "integer", title: "BARB week number" },
+          published: { type: "boolean", title: "Published" },
+        },
+      },
+      onSubmit,
+    });
+
+    await fireEvent.input(screen.getByLabelText("Name *"), {
+      target: { value: "Manual Source" },
+    });
+
+    await fireEvent.submit(screen.getByRole("button", { name: "Submit" }).closest("form")!);
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: "Manual Source",
+      published: false,
+    });
+    expect(onSubmit).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceDocumentUrl: "",
+      }),
+    );
+    expect(onSubmit).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        barbWeekNumber: "",
+      }),
+    );
+  });
+
   it("renders nested enum, boolean, integer, and deeper objects recursively", async () => {
     const onSubmit = vi.fn();
 

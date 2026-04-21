@@ -147,11 +147,39 @@
     return out;
   }
 
+  function omitOptionalBlankFields(
+    data: Record<string, unknown>,
+    props: Record<string, JsonSchemaProperty>,
+    parentRequired: string[] | undefined,
+  ): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const [key, prop] of Object.entries(props)) {
+      const required = parentRequired?.includes(key) ?? false;
+      const value = data[key];
+
+      if (prop.type === "object" && prop.properties && typeof value === "object" && value !== null) {
+        const nested = omitOptionalBlankFields(value as Record<string, unknown>, prop.properties, prop.required);
+        if (required || Object.keys(nested).length > 0) {
+          out[key] = nested;
+        }
+        continue;
+      }
+
+      if (required || prop.type === "boolean" || (value !== undefined && value !== "")) {
+        out[key] = value;
+      }
+    }
+    return out;
+  }
+
   function handleSubmit(e: Event) {
     e.preventDefault();
     const nested = buildNested(flat);
     const coerced = schema.properties ? coerce(nested, schema.properties) : nested;
-    onSubmit(coerced);
+    const payload = schema.properties
+      ? omitOptionalBlankFields(coerced, schema.properties, schema.required)
+      : coerced;
+    onSubmit(payload);
   }
 </script>
 
