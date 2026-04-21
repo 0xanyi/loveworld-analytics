@@ -14,6 +14,7 @@ import { connectorRoutes } from "./routes/connectors";
 import { sourcesRoutes } from "./routes/sources";
 import { metricsRoutes } from "./routes/metrics";
 import { backfillRoutes, type BackfillQueue } from "./routes/backfill";
+import { sourceHealthRoutes } from "./routes/source-health";
 
 export type AppDeps = {
   auth?: Auth;
@@ -64,6 +65,7 @@ export function buildApp(deps: AppDeps = {}): Hono {
     app.route("/", entriesRoutes(deps.db));
     app.route("/", hierarchyRoutes(deps.db));
     app.route("/", metricsRoutes(deps.db));
+    app.route("/", sourceHealthRoutes(deps.db));
 
     if (deps.kek) {
       app.route("/", connectorRoutes(deps.db, deps.kek));
