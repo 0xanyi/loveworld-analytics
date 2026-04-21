@@ -17,16 +17,17 @@ const env = envResult.value;
 const db = createDb(env.DATABASE_URL);
 const sendEmail = createEmailSender(env);
 
+const allowedOrigins = env.ALLOWED_ORIGINS;
+
 const auth = createAuth({
   db,
   secret: env.AUTH_SECRET,
   baseUrl: env.AUTH_BASE_URL,
+  trustedOrigins: allowedOrigins,
   sendMagicLink: async (to, url) => {
     await sendEmail(to, "Your Loveworld Analytics sign-in link", `Sign in: ${url}`);
   },
 });
-
-const allowedOrigins = env.ALLOWED_ORIGINS;
 const kek = envKekProvider();
 
 const app = buildApp({ auth, allowedOrigins, db, kek, redisUrl: env.REDIS_URL });
