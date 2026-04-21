@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { enhance } from "$app/forms";
+  import { applyAction, deserialize } from "$app/forms";
+  import type { ActionResult } from "@sveltejs/kit";
   import { FormFromSchema } from "@lwa/ui";
 
   let { data, form } = $props();
@@ -38,8 +39,9 @@
   const hierarchyNodes = $derived(data.hierarchyNodes as HierarchyNode[]);
 
   let selectedKey = $state<string>("");
-  // pending payload stored outside of Svelte state to avoid timing issues
-  let pendingPayloadStore = { value: "" };
+  // Monotonic counter — incremented on successful submit to `{#key}`-remount
+  // <FormFromSchema>, which resets all filled values.
+  let formInstance = $state(0);
 
   const selectedConnector = $derived(
     manualConnectors.find((c) => c.key === selectedKey) ?? manualConnectors[0],
@@ -51,11 +53,32 @@
     }
   });
 
-  let hiddenForm = $state<HTMLFormElement | null>(null);
+  async function handleEntrySubmit(payload: Record<string, unknown>) {
+    const body = new URLSearchParams({
+      connectorKey: selectedKey,
+      payload: JSON.stringify(payload),
+    });
 
-  function handleEntrySubmit(payload: Record<string, unknown>) {
-    pendingPayloadStore.value = JSON.stringify(payload);
-    hiddenForm?.requestSubmit();
+    // POST to the current route URL to invoke the default action.
+    // Mirrors what `use:enhance` does internally (see @sveltejs/kit
+    // runtime/app/forms.js: it posts to `form_element.action`, which
+    // defaults to the current URL for a form without an `action` attr).
+    const res = await fetch(window.location.pathname + window.location.search, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/x-www-form-urlencoded",
+        "x-sveltekit-action": "true",
+      },
+      body,
+    });
+
+    const result = deserialize(await res.text()) as ActionResult;
+    await applyAction(result);
+
+    if (result.type === "success") {
+      formInstance += 1;
+    }
   }
 
   const hierarchyOverride = $derived({
@@ -93,34 +116,17 @@
 
       {#if selectedConnector?.entrySchema}
         <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <FormFromSchema
-            schema={selectedConnector.entrySchema as EntryJsonSchema}
-            overrides={overrides}
-            onSubmit={handleEntrySubmit}
-            submitLabel="Submit"
-          />
+          {#key formInstance}
+            <FormFromSchema
+              schema={selectedConnector.entrySchema as EntryJsonSchema}
+              overrides={overrides}
+              onSubmit={handleEntrySubmit}
+              submitLabel="Submit"
+            />
+          {/key}
         </div>
       {/if}
     </div>
-
-    <!-- hidden form that posts to the server action via use:enhance -->
-    <form
-      bind:this={hiddenForm}
-      method="POST"
-      class="hidden"
-      use:enhance={({ formData }) => {
-        // inject payload into form data at submit time (bypasses timing issues)
-        formData.set("connectorKey", selectedKey);
-        formData.set("payload", pendingPayloadStore.value);
-
-        return async ({ update }) => {
-          await update();
-        };
-      }}
-    >
-      <input type="hidden" name="connectorKey" value="" />
-      <input type="hidden" name="payload" value="" />
-    </form>
 
     {#if form?.success}
       <p class="rounded-md bg-green-50 p-4 text-sm font-medium text-green-700" role="status">
