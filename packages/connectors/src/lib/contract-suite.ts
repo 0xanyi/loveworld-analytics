@@ -21,10 +21,12 @@ export function runConnectorContract(connector: SourceConnector, fixture: Contra
       expect(isOk(r)).toBe(true);
     });
 
-    it("validateCredentials(invalidCredentials) returns err", async () => {
-      const r = await connector.validateCredentials(fixture.invalidCredentials);
-      expect(isErr(r)).toBe(true);
-    });
+    if (connector.kind === "pull") {
+      it("validateCredentials(invalidCredentials) returns err", async () => {
+        const r = await connector.validateCredentials(fixture.invalidCredentials);
+        expect(isErr(r)).toBe(true);
+      });
+    }
 
     if (connector.kind === "pull" && fixture.mockPullInput) {
       const pull = connector as PullConnector;

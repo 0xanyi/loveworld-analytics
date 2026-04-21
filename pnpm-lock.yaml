@@ -217,6 +217,9 @@ importers:
       '@lwa/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@lwa/connectors':
+        specifier: workspace:*
+        version: link:../../packages/connectors
       '@lwa/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

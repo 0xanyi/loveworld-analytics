@@ -27,7 +27,7 @@ const auth = createAuth({
 
 const allowedOrigins = env.ALLOWED_ORIGINS;
 
-const app = buildApp({ auth, allowedOrigins });
+const app = buildApp({ auth, allowedOrigins, db });
 
 const server = serve({ fetch: app.fetch, port: env.API_PORT }, (info) => {
   console.log(`API listening on http://localhost:${info.port}`);

@@ -3,9 +3,11 @@ import { logger } from "hono/logger";
 import { cors } from "hono/cors";
 import type { Auth } from "@lwa/auth";
 import { requireSession } from "@lwa/auth";
+import type { Database } from "@lwa/db";
 import { healthRoutes } from "./routes/health";
 import { meRoutes } from "./routes/me";
 import { authRoutes } from "./routes/auth";
+import { entriesRoutes } from "./routes/entries";
 
 export type AppDeps = {
   auth?: Auth;
@@ -15,6 +17,7 @@ export type AppDeps = {
    * (e.g., server-side render) or when no browser client exists yet.
    */
   allowedOrigins?: readonly string[];
+  db?: Database;
 };
 
 export function buildApp(deps: AppDeps = {}): Hono {
@@ -42,9 +45,14 @@ export function buildApp(deps: AppDeps = {}): Hono {
   if (deps.auth) {
     app.route("/", authRoutes(deps.auth));
     app.use("/me", requireSession(deps.auth));
+    app.use("/tenants/:slug/entries", requireSession(deps.auth));
   }
 
   app.route("/", meRoutes);
+
+  if (deps.db) {
+    app.route("/", entriesRoutes(deps.db));
+  }
 
   return app;
 }
