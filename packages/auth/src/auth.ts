@@ -7,6 +7,7 @@ export type AuthConfig = {
   db: Database;
   secret: string;
   baseUrl: string;
+  trustedOrigins?: string[];
   sendMagicLink: (to: string, url: string) => Promise<void>;
 };
 
@@ -15,6 +16,7 @@ export function createAuth(config: AuthConfig) {
     database: drizzleAdapter(config.db, { provider: "pg" }),
     secret: config.secret,
     baseURL: config.baseUrl,
+    trustedOrigins: config.trustedOrigins,
     // Task 2's schema types id columns as `uuid`; Better Auth's default ID
     // generator produces nanoid-style 32-char strings which Postgres rejects
     // as invalid UUIDs. Force UUID generation here to match the schema.

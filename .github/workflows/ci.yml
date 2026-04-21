@@ -61,6 +61,37 @@ jobs:
   e2e-smoke:
     runs-on: ubuntu-latest
     needs: lint-typecheck-test
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: lwa
+          POSTGRES_PASSWORD: lwa_test
+          POSTGRES_DB: lwa_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+        ports:
+          - 6379:6379
+    env:
+      DATABASE_URL: postgres://lwa:lwa_test@localhost:5432/lwa_test
+      REDIS_URL: redis://localhost:6379
+      AUTH_SECRET: ci_secret_at_least_32_characters_long
+      AUTH_BASE_URL: http://localhost:3001
+      ALLOWED_ORIGINS: http://localhost:5173
+      LWA_KEK_CURRENT: v1
+      LWA_KEK_V1: dGVzdF9rZWtfYmFzZTY0X2F0X2xlYXN0XzMyX2J5dGVzX2xvbmdfb2s=
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -69,5 +100,24 @@ jobs:
           node-version: 22
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
+      - run: pnpm -F @lwa/db migrate
+      - name: Start API for Playwright
+        run: |
+          pnpm -F @lwa/api dev > /tmp/lwa-api.log 2>&1 &
+          echo $! > /tmp/lwa-api.pid
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3001/health > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/lwa-api.log
+          exit 1
       - run: pnpm -F @lwa/web exec playwright install --with-deps chromium
       - run: pnpm -F @lwa/web test:e2e
+      - name: Print API log on failure
+        if: failure()
+        run: cat /tmp/lwa-api.log
+      - name: Stop API
+        if: always()
+        run: kill $(cat /tmp/lwa-api.pid)
