@@ -25,7 +25,7 @@ export function meRoutes(db?: Database): Hono {
     };
 
     if (!db) {
-      return c.json({ user, memberships: [] });
+      return c.json({ error: "service unavailable: database not configured" }, 503);
     }
 
     // Join tenantMembership → tenant, exclude archived tenants.

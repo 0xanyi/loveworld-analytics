@@ -78,6 +78,19 @@ async function seedMembership(
 }
 
 describe("GET /me", () => {
+  it("returns 503 when authenticated but db is not configured", async () => {
+    const suffix = crypto.randomUUID().slice(0, 8);
+    const u = await seedUser(suffix);
+    // Build app with auth but no db — simulates server misconfiguration.
+    const app = buildApp({ auth: testAuth() });
+    const res = await app.request("/me", {
+      headers: { "x-test-user-id": u.id },
+    });
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toMatch(/database not configured/);
+  });
+
   it("returns 401 when unauthenticated", async () => {
     const app = buildApp({ db, auth: testAuth() });
     const res = await app.request("/me");
