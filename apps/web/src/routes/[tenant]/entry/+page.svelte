@@ -62,6 +62,10 @@
     hierarchyNodeId: {
       options: hierarchyNodes.map((n) => ({ value: n.id, label: n.name })),
     },
+    "period.start": { label: "Start" },
+    "period.end": { label: "End" },
+    householdsReached: { label: "Households Reached" },
+    estimationMethod: { label: "Estimation Method" },
   });
 
   const overrides = $derived({ ...hierarchyOverride });

@@ -64,20 +64,20 @@ test("manual entry form can be submitted successfully", async ({ page }) => {
   // Source select should be visible (satellite is the only configured connector)
   await expect(page.getByLabel("Source", { exact: true })).toBeVisible();
 
-  // Select hierarchy node u2014 label is "hierarchyNodeId *" (key used as label since no title)
+  // Select hierarchy node — label is "hierarchyNodeId *" (key used as label since no title)
   const hierarchyNodeId = nodeIds["station"]!;
   await page.getByLabel("hierarchyNodeId *").selectOption(hierarchyNodeId);
 
-  // Fill period start u2014 nested field label is "start *"
-  await page.getByLabel("start *").fill("2025-01-01");
+  // Fill period start — nested field label override is "Start *"
+  await page.getByLabel("Start *").fill("2025-01-01");
 
-  // Fill period end u2014 nested field label is "end *"
-  await page.getByLabel("end *").fill("2025-02-01");
+  // Fill period end — nested field label override is "End *"
+  await page.getByLabel("End *").fill("2025-02-01");
 
-  // Fill households
-  await page.getByLabel("householdsReached *").fill("5000");
+  // Fill households — label override is "Households Reached *"
+  await page.getByLabel("Households Reached *").fill("5000");
 
-  // estimationMethod is a select u2014 first option will be pre-selected, no need to change
+  // estimationMethod is a select — first option will be pre-selected, no need to change
 
   // Submit
   await page.getByRole("button", { name: "Submit" }).click();

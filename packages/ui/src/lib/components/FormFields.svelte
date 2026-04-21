@@ -1,6 +1,7 @@
 <script context="module" lang="ts">
   export type FieldOverride = {
-    options: { value: string; label: string }[];
+    label?: string;
+    options?: { value: string; label: string }[];
   };
 
   export type FieldNode = {
@@ -62,7 +63,7 @@
           {/each}
         </select>
       </div>
-    {:else if node.override}
+    {:else if node.override?.options}
       <div>
         <label for={id}>{node.label}</label>
         <select

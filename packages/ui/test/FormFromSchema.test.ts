@@ -61,6 +61,38 @@ describe("FormFromSchema", () => {
     });
   });
 
+  it("supports label overrides for schema fields", async () => {
+    const onSubmit = vi.fn();
+
+    render(FormFromSchema, {
+      schema: {
+        type: "object",
+        required: ["householdsReached"],
+        properties: {
+          householdsReached: { type: "integer" },
+          period: {
+            type: "object",
+            required: ["start"],
+            properties: {
+              start: { type: "string" },
+            },
+          },
+        },
+      },
+      overrides: {
+        householdsReached: { label: "Households Reached" },
+        "period.start": { label: "Start" },
+      },
+      onSubmit,
+    });
+
+    // Label overrides should replace raw key names
+    expect(screen.getByLabelText("Households Reached *")).toBeTruthy();
+    expect(screen.getByLabelText("Start *")).toBeTruthy();
+    expect(screen.queryByLabelText("householdsReached *")).toBeNull();
+    expect(screen.queryByLabelText("start *")).toBeNull();
+  });
+
   it("supports select overrides for schema fields", async () => {
     const onSubmit = vi.fn();
 

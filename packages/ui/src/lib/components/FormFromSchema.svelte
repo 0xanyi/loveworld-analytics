@@ -67,8 +67,10 @@
     const nodes: RenderNode[] = [];
     for (const [key, prop] of Object.entries(props)) {
       const path = prefix ? `${prefix}.${key}` : key;
+      const override = currentOverrides[path] ?? currentOverrides[key];
       const required = parentRequired?.includes(key) ?? false;
-      const label = (prop.title ?? key) + (required ? " *" : "");
+      const baseLabel = override?.label ?? prop.title ?? key;
+      const label = baseLabel + (required ? " *" : "");
 
       if (prop.type === "object" && prop.properties) {
         nodes.push({
@@ -84,7 +86,7 @@
           label,
           type: prop.type as "string" | "integer" | "number" | "boolean",
           enum: prop.enum,
-          override: currentOverrides[path] ?? currentOverrides[key],
+          override,
         });
       }
     }
@@ -99,7 +101,7 @@
         continue;
       }
 
-      const options = node.enum ?? node.override?.options.map((option) => option.value);
+      const options = node.enum ?? node.override?.options?.map((option) => option.value);
       if (!options || options.length === 0) continue;
 
       const currentValue = target[node.path];
