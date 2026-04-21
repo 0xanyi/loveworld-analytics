@@ -24,6 +24,7 @@ test("network admin can create, rename, and archive hierarchy nodes", async ({ p
   await page.getByLabel("Type").selectOption("broadcast_channel");
   await page.getByRole("button", { name: "Create node" }).click();
   await expect(page.getByText("Broadcast West")).toBeVisible();
+  await page.waitForLoadState("networkidle");
 
   const broadcastWestCard = page.locator("div.rounded-lg.border.p-3", {
     has: page.getByText("Broadcast West", { exact: true }),
