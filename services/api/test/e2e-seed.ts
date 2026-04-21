@@ -73,7 +73,7 @@ if (!existingUser) {
   throw new Error(`user not found for ${input.email}`);
 }
 
-const tenantResults: Array<{ slug: string; tenantId: string; nodeIds: Record<string, string> }> = [];
+const tenantResults: Array<{ slug: string; tenantId: string; nodeIds: Record<string, string>; connectorIds: Record<string, string> }> = [];
 
 for (const tenantSeed of input.tenants) {
   const [tenantRow] = await db

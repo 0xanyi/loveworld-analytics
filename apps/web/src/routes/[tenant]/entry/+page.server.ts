@@ -1,4 +1,4 @@
-import { fail, redirect } from "@sveltejs/kit";
+import { error, fail, redirect } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
 import { serverApiFetch } from "$lib/server/api";
 
@@ -57,14 +57,22 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
   ]);
 
   if (hierarchyRes.status === 401 || sourcesRes.status === 401 || healthRes.status === 401) {
-    redirect(302, "/login");
+    throw redirect(303, "/login");
+  }
+
+  if (!hierarchyRes.ok) {
+    throw error(hierarchyRes.status, "Failed to load tenant hierarchy");
+  }
+  if (!sourcesRes.ok) {
+    throw error(sourcesRes.status, "Failed to load sources");
+  }
+  if (!healthRes.ok) {
+    throw error(healthRes.status, "Failed to load source health");
   }
 
   const hierarchyBody = (await hierarchyRes.json()) as { nodes: HierarchyNode[] };
   const sourcesBody = (await sourcesRes.json()) as { sources: Source[] };
-  const healthBody = healthRes.ok
-    ? ((await healthRes.json()) as { connectors: SourceHealth[] })
-    : { connectors: [] };
+  const healthBody = (await healthRes.json()) as { connectors: SourceHealth[] };
 
   const sourceMap = new Map<string, Source>(sourcesBody.sources.map((s) => [s.key, s]));
 
@@ -113,7 +121,7 @@ export const actions: Actions = {
     });
 
     if (res.status === 401) {
-      redirect(302, "/login");
+      throw redirect(303, "/login");
     }
 
     if (!res.ok) {
