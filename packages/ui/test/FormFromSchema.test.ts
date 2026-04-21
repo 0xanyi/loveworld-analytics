@@ -353,4 +353,111 @@ describe("FormFromSchema", () => {
 
     expect(onSubmit).toHaveBeenLastCalledWith({ status: "draft" });
   });
+
+  it("override options take precedence over schema enum for render and default", async () => {
+    const onSubmit = vi.fn();
+
+    render(FormFromSchema, {
+      schema: {
+        type: "object",
+        required: ["status"],
+        properties: {
+          status: { type: "string", enum: ["draft", "published"], title: "Status" },
+        },
+      },
+      overrides: {
+        status: {
+          options: [
+            { value: "active", label: "Active" },
+            { value: "paused", label: "Paused" },
+          ],
+        },
+      },
+      onSubmit,
+    });
+
+    const select = screen.getByLabelText("Status *") as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.value)).toEqual(["active", "paused"]);
+    expect(Array.from(select.options).map((o) => o.text)).toEqual(["Active", "Paused"]);
+    expect(select.value).toBe("active");
+
+    await fireEvent.submit(screen.getByRole("button", { name: "Submit" }).closest("form")!);
+
+    // Default selection must match the override, not the raw enum.
+    expect(onSubmit).toHaveBeenCalledWith({ status: "active" });
+  });
+
+  it("omits untouched optional object groups even when they have required children", async () => {
+    const onSubmit = vi.fn();
+
+    render(FormFromSchema, {
+      schema: {
+        type: "object",
+        required: ["name"],
+        properties: {
+          name: { type: "string", title: "Name" },
+          // Optional group whose children happen to be required when the
+          // group is present. The whole group should drop if untouched.
+          period: {
+            type: "object",
+            title: "Period",
+            required: ["start", "end"],
+            properties: {
+              start: { type: "string", title: "Start" },
+              end: { type: "string", title: "End" },
+            },
+          },
+        },
+      },
+      onSubmit,
+    });
+
+    await fireEvent.input(screen.getByLabelText("Name *"), {
+      target: { value: "Only name filled" },
+    });
+
+    await fireEvent.submit(screen.getByRole("button", { name: "Submit" }).closest("form")!);
+
+    expect(onSubmit).toHaveBeenCalledWith({ name: "Only name filled" });
+  });
+
+  it("includes optional group when any descendant is touched", async () => {
+    const onSubmit = vi.fn();
+
+    render(FormFromSchema, {
+      schema: {
+        type: "object",
+        required: ["name"],
+        properties: {
+          name: { type: "string", title: "Name" },
+          period: {
+            type: "object",
+            title: "Period",
+            required: ["start", "end"],
+            properties: {
+              start: { type: "string", title: "Start" },
+              end: { type: "string", title: "End" },
+            },
+          },
+        },
+      },
+      onSubmit,
+    });
+
+    await fireEvent.input(screen.getByLabelText("Name *"), {
+      target: { value: "N" },
+    });
+    // Only touch the group's start field. `end` stays blank but the group
+    // must still be emitted since the user interacted with it.
+    await fireEvent.input(screen.getByLabelText("Start *"), {
+      target: { value: "2026-01-01" },
+    });
+
+    await fireEvent.submit(screen.getByRole("button", { name: "Submit" }).closest("form")!);
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: "N",
+      period: { start: "2026-01-01", end: "" },
+    });
+  });
 });

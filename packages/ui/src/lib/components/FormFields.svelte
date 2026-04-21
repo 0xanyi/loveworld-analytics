@@ -50,19 +50,6 @@
           on:change={(e) => { flat[node.path] = (e.target as HTMLInputElement).checked; }}
         />
       </div>
-    {:else if node.enum}
-      <div>
-        <label for={id}>{node.label}</label>
-        <select
-          {id}
-          value={getFlat(node.path)}
-          on:change={(e) => { flat[node.path] = (e.target as HTMLSelectElement).value; }}
-        >
-          {#each node.enum as opt}
-            <option value={opt}>{opt}</option>
-          {/each}
-        </select>
-      </div>
     {:else if node.override?.options}
       <div>
         <label for={id}>{node.label}</label>
@@ -73,6 +60,19 @@
         >
           {#each node.override.options as opt}
             <option value={opt.value}>{opt.label}</option>
+          {/each}
+        </select>
+      </div>
+    {:else if node.enum}
+      <div>
+        <label for={id}>{node.label}</label>
+        <select
+          {id}
+          value={getFlat(node.path)}
+          on:change={(e) => { flat[node.path] = (e.target as HTMLSelectElement).value; }}
+        >
+          {#each node.enum as opt}
+            <option value={opt}>{opt}</option>
           {/each}
         </select>
       </div>

@@ -101,7 +101,11 @@
         continue;
       }
 
-      const options = node.enum ?? node.override?.options?.map((option) => option.value);
+      // Override options take precedence over schema enum — a caller that
+      // supplies overrides for an enum-backed field expects *their* options
+      // to drive both render and the default-selection fallback below.
+      const overrideValues = node.override?.options?.map((option) => option.value);
+      const options = overrideValues ?? node.enum;
       if (!options || options.length === 0) continue;
 
       const currentValue = target[node.path];
@@ -155,6 +159,35 @@
     return out;
   }
 
+  // Returns true if any leaf in the subtree holds a non-default value the
+  // user could have produced:
+  //   - string: non-empty
+  //   - integer/number: any numeric value (coerce() only produces numbers
+  //     from non-blank input, so `0` counts as user intent)
+  //   - boolean: true (checkboxes default to false)
+  //
+  // Known limitation: enums auto-select their first option on mount, so an
+  // optional group containing an enum-backed field will always look
+  // "touched". No current P0 connector schema hits this case.
+  function hasTouchedDescendant(
+    data: Record<string, unknown>,
+    props: Record<string, JsonSchemaProperty>,
+  ): boolean {
+    for (const [key, prop] of Object.entries(props)) {
+      const value = data[key];
+      if (prop.type === "object" && prop.properties && typeof value === "object" && value !== null) {
+        if (hasTouchedDescendant(value as Record<string, unknown>, prop.properties)) return true;
+      } else if (prop.type === "boolean") {
+        if (value === true) return true;
+      } else if (typeof value === "number") {
+        return true;
+      } else if (typeof value === "string" && value !== "") {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function omitOptionalBlankFields(
     data: Record<string, unknown>,
     props: Record<string, JsonSchemaProperty>,
@@ -166,6 +199,12 @@
       const value = data[key];
 
       if (prop.type === "object" && prop.properties && typeof value === "object" && value !== null) {
+        // An optional object group with no user-touched descendants should
+        // be omitted entirely — otherwise required/boolean children at
+        // their defaults force the group to render in the payload.
+        if (!required && !hasTouchedDescendant(value as Record<string, unknown>, prop.properties)) {
+          continue;
+        }
         const nested = omitOptionalBlankFields(value as Record<string, unknown>, prop.properties, prop.required);
         if (required || Object.keys(nested).length > 0) {
           out[key] = nested;
