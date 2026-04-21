@@ -4,12 +4,13 @@ Multi-tenant cross-platform analytics rollup platform for TV channel networks.
 
 ## Status
 
-**Phase 1 in progress.** Phase 0 (Foundations) shipped; Phase 1 (P0 connectors + first dashboard tiles) is 8 of 11 tasks in, with the ingestion pipeline, four P0 connectors, and RBAC-gated API routes all on `main`.
+**Phase 1 in progress.** Phase 0 (Foundations) shipped; Phase 1 (P0 connectors + first dashboard tiles) is effectively feature-complete for the operator UI. Remaining before Phase 1 closes: `admin:set-password` CLI and the `phase1:gate` reproducible smoke script (tracked in `docs/plans/2026-04-21-phase-1-remainder-finish-gate.md`).
 
 - **P0 connectors**: `manual_satellite`, `manual_freeview`, `cloudflare_analytics`, `ga4`
-- **API routes**: auth, `/me`, tenant hierarchy CRUD, connector management, manual entries, metrics board, backfill trigger
+- **API routes**: auth, `/me`, tenant hierarchy CRUD, connector management, manual entries, metrics board, source health (read-only), backfill trigger
 - **Ingestion**: BullMQ scheduler, pull handler, rollup refresh, backfill handler with idempotent chunk accounting
-- **Tests**: 269 passing across the workspace (crypto · contracts · db · connectors · auth · ingestion · api) + Playwright smoke on web
+- **Web UI**: tenant switcher root, dashboard (TV-households + Web tiles, period + comparison pickers), hierarchy management, manual entry console, source health list + detail, tenant navigation
+- **Tests**: 300+ vitest passing across the workspace (crypto · contracts · db · connectors · auth · ingestion · api · ui) + full Playwright e2e on web
 
 See `docs/plans/` for the design document and phase plans.
 
@@ -29,7 +30,7 @@ packages/
   auth/               Better Auth config + Hono middleware + permissions matrix
   crypto/             AES-256-GCM envelope for connector credentials (KEK/DEK)
   connectors/         P0 source connectors + registry + contract test suite
-  ui/                 shadcn-svelte primitives
+  ui/                 UI primitives + schema-driven form + KPI tile + tree
   tsconfig/           Shared TypeScript base configs
 
 docs/
