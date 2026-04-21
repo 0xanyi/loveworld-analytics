@@ -91,4 +91,67 @@ describe("FormFromSchema", () => {
 
     expect(onSubmit).toHaveBeenCalledWith({ hierarchyNodeId: "node-2" });
   });
+
+  it("renders nested enum, boolean, integer, and deeper objects recursively", async () => {
+    const onSubmit = vi.fn();
+
+    render(FormFromSchema, {
+      schema: {
+        type: "object",
+        properties: {
+          config: {
+            type: "object",
+            title: "Config",
+            required: ["mode", "active", "limit", "meta"],
+            properties: {
+              mode: { type: "string", enum: ["fast", "slow"], title: "Mode" },
+              active: { type: "boolean", title: "Active" },
+              limit: { type: "number", title: "Limit" },
+              meta: {
+                type: "object",
+                title: "Meta",
+                required: ["tag"],
+                properties: {
+                  tag: { type: "string", title: "Tag" },
+                },
+              },
+            },
+          },
+        },
+      },
+      initialValue: {
+        config: { mode: "fast", active: false, limit: 10, meta: { tag: "v1" } },
+      },
+      onSubmit,
+    });
+
+    // nested enum renders as <select>
+    const modeSelect = screen.getByLabelText("Mode *") as HTMLSelectElement;
+    expect(modeSelect.tagName).toBe("SELECT");
+    await fireEvent.change(modeSelect, { target: { value: "slow" } });
+
+    // nested boolean renders as checkbox
+    const activeCheck = screen.getByLabelText("Active *") as HTMLInputElement;
+    expect(activeCheck.type).toBe("checkbox");
+    await fireEvent.click(activeCheck); // toggle to true
+
+    // nested number renders as number input
+    const limitInput = screen.getByLabelText("Limit *") as HTMLInputElement;
+    expect(limitInput.type).toBe("number");
+    await fireEvent.input(limitInput, { target: { value: "99" } });
+
+    // deeply nested string field
+    await fireEvent.input(screen.getByLabelText("Tag *"), { target: { value: "v2" } });
+
+    await fireEvent.submit(screen.getByRole("button", { name: "Submit" }).closest("form")!);
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      config: {
+        mode: "slow",
+        active: true,
+        limit: 99,
+        meta: { tag: "v2" },
+      },
+    });
+  });
 });

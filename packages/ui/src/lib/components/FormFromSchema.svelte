@@ -1,4 +1,7 @@
 <script lang="ts">
+  import FormFields from "./FormFields.svelte";
+  import type { RenderNode } from "./FormFields.svelte";
+
   type JsonSchemaProperty = {
     type: "string" | "integer" | "number" | "boolean" | "object";
     title?: string;
@@ -23,7 +26,7 @@
   export let onSubmit: (data: Record<string, unknown>) => void;
   export let submitLabel: string = "Submit";
 
-  // Flat state: dotted paths -> string | boolean
+  // ── flat state (dotted paths → string | boolean) ─────────────────────────────
   type FlatValue = string | boolean;
   const flat: Record<string, FlatValue> = {};
 
@@ -49,6 +52,44 @@
     initFlat(schema.properties, initialValue, "");
   }
 
+  // ── render tree ───────────────────────────────────────────────────────────────
+  function collectNodes(
+    props: Record<string, JsonSchemaProperty>,
+    parentRequired: string[] | undefined,
+    prefix: string,
+  ): RenderNode[] {
+    const nodes: RenderNode[] = [];
+    for (const [key, prop] of Object.entries(props)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+      const required = parentRequired?.includes(key) ?? false;
+      const label = (prop.title ?? key) + (required ? " *" : "");
+
+      if (prop.type === "object" && prop.properties) {
+        nodes.push({
+          kind: "group",
+          path,
+          groupLabel: prop.title ?? key,
+          children: collectNodes(prop.properties, prop.required, path),
+        });
+      } else {
+        nodes.push({
+          kind: "field",
+          path,
+          label,
+          type: prop.type as "string" | "integer" | "number" | "boolean",
+          enum: prop.enum,
+          override: overrides[path] ?? overrides[key],
+        });
+      }
+    }
+    return nodes;
+  }
+
+  const renderNodes: RenderNode[] = schema.properties
+    ? collectNodes(schema.properties, schema.required, "")
+    : [];
+
+  // ── submission ────────────────────────────────────────────────────────────────
   function buildNested(paths: Record<string, FlatValue>): Record<string, unknown> {
     const result: Record<string, unknown> = {};
     for (const [dotPath, val] of Object.entries(paths)) {
@@ -88,93 +129,9 @@
     const coerced = schema.properties ? coerce(nested, schema.properties) : nested;
     onSubmit(coerced);
   }
-
-  function isRequired(key: string, req: string[] | undefined): boolean {
-    return req?.includes(key) ?? false;
-  }
-
-  // Reactive helper to get/set flat values
-  function getFlat(path: string): FlatValue {
-    return flat[path] ?? "";
-  }
 </script>
 
 <form on:submit={handleSubmit}>
-  {#if schema.properties}
-    {#each Object.entries(schema.properties) as [key, prop]}
-      {@const path = key}
-      {@const required = isRequired(key, schema.required)}
-      {@const label = (prop.title ?? key) + (required ? " *" : "")}
-      {@const id = `field-${path}`}
-
-      {#if prop.type === "object" && prop.properties}
-        <fieldset>
-          <legend>{prop.title ?? key}</legend>
-          {#each Object.entries(prop.properties) as [childKey, childProp]}
-            {@const childPath = `${path}.${childKey}`}
-            {@const childRequired = isRequired(childKey, prop.required)}
-            {@const childLabel = (childProp.title ?? childKey) + (childRequired ? " *" : "")}
-            {@const childId = `field-${childPath}`}
-            <div>
-              <label for={childId}>{childLabel}</label>
-              <input
-                id={childId}
-                type="text"
-                value={getFlat(childPath)}
-                on:input={(e) => { flat[childPath] = (e.target as HTMLInputElement).value; }}
-              />
-            </div>
-          {/each}
-        </fieldset>
-      {:else if prop.type === "boolean"}
-        <div>
-          <label for={id}>{label}</label>
-          <input
-            id={id}
-            type="checkbox"
-            checked={flat[path] === true}
-            on:click={() => { flat[path] = !(flat[path] === true); }}
-          />
-        </div>
-      {:else if prop.enum}
-        <div>
-          <label for={id}>{label}</label>
-          <select
-            id={id}
-            value={getFlat(path)}
-            on:change={(e) => { flat[path] = (e.target as HTMLSelectElement).value; }}
-          >
-            {#each prop.enum as opt}
-              <option value={opt}>{opt}</option>
-            {/each}
-          </select>
-        </div>
-      {:else if overrides[key]?.options}
-        <div>
-          <label for={id}>{label}</label>
-          <select
-            id={id}
-            value={getFlat(path)}
-            on:change={(e) => { flat[path] = (e.target as HTMLSelectElement).value; }}
-          >
-            {#each overrides[key]!.options as opt}
-              <option value={opt.value}>{opt.label}</option>
-            {/each}
-          </select>
-        </div>
-      {:else}
-        <div>
-          <label for={id}>{label}</label>
-          <input
-            id={id}
-            type={prop.type === "integer" || prop.type === "number" ? "number" : "text"}
-            value={getFlat(path)}
-            on:input={(e) => { flat[path] = (e.target as HTMLInputElement).value; }}
-          />
-        </div>
-      {/if}
-    {/each}
-  {/if}
-
+  <FormFields nodes={renderNodes} {flat} />
   <button type="submit">{submitLabel}</button>
 </form>
