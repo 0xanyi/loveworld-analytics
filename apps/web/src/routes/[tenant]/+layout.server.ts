@@ -1,18 +1,20 @@
 import { error, redirect } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
-import { loadMemberships } from "$lib/server/session";
+import { loadMeResponse } from "$lib/server/session";
 import type { Capability, Role } from "@lwa/auth/permissions";
 import { capabilitiesFor } from "@lwa/auth/permissions";
 
 export const load: LayoutServerLoad = async ({ params, cookies }) => {
   if (!params.tenant) error(404, "Tenant not specified");
 
-  const memberships = await loadMemberships(cookies);
-  if (!memberships) {
+  // Single /me round-trip for both memberships and the logged-in user's
+  // display info. Prevents a second fetch just to show the header badge.
+  const me = await loadMeResponse(cookies);
+  if (!me) {
     throw redirect(303, "/login");
   }
 
-  const membership = memberships.find((m) => m.tenantSlug === params.tenant);
+  const membership = me.memberships.find((m) => m.tenantSlug === params.tenant);
   if (!membership) {
     throw error(404, "Tenant not found");
   }
@@ -24,5 +26,12 @@ export const load: LayoutServerLoad = async ({ params, cookies }) => {
     tenantSlug: params.tenant,
     role,
     capabilities,
+    currentUser: {
+      email: me.user.email,
+      name: me.user.name,
+    },
+    // Used by the account menu to decide whether to expose the
+    // "Switch tenant" action — pointless for single-tenant users.
+    membershipCount: me.memberships.length,
   };
 };

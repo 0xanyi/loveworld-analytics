@@ -18,8 +18,8 @@ describe("KpiTile formatting", () => {
   });
 
   it("returns tone classes and supports adjustment-driven scenarios", () => {
-    expect(deltaTone(4)).toBe("text-emerald-600");
-    expect(deltaTone(-1)).toBe("text-red-600");
-    expect(deltaTone(null)).toBe("text-slate-500");
+    expect(deltaTone(4)).toBe("text-positive");
+    expect(deltaTone(-1)).toBe("text-negative");
+    expect(deltaTone(null)).toBe("text-ink-muted");
   });
 });

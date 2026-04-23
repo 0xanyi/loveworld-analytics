@@ -1,4 +1,6 @@
+export { default as ArrowIcon } from "./ArrowIcon.svelte";
 export { default as Button } from "./Button.svelte";
+export { default as Chevron } from "./Chevron.svelte";
 export { default as FormFromSchema } from "./FormFromSchema.svelte";
 export { default as Card } from "./Card.svelte";
 export { default as ComparisonPicker } from "./ComparisonPicker.svelte";

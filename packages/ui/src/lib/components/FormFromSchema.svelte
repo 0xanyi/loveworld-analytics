@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ArrowIcon from "./ArrowIcon.svelte";
+  import Button from "./Button.svelte";
   import FormFields from "./FormFields.svelte";
   import type { FieldOverride, RenderNode } from "./FormFields.svelte";
 
@@ -230,7 +232,10 @@
   }
 </script>
 
-<form on:submit={handleSubmit}>
+<form on:submit={handleSubmit} class="space-y-8">
   <FormFields nodes={renderNodes} {flat} />
-  <button type="submit">{submitLabel}</button>
+  <Button type="submit" variant="primary" size="lg">
+    <span>{submitLabel}</span>
+    <ArrowIcon />
+  </Button>
 </form>

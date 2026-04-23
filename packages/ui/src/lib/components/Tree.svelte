@@ -19,9 +19,16 @@
 </script>
 
 {#if nodes.length === 0}
-  <p class="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
-    No hierarchy nodes yet.
-  </p>
+  <div
+    class="flex flex-col items-center justify-center gap-3 border border-dashed border-hairline bg-surface px-6 py-16 text-center"
+  >
+    <p class="eyebrow">Empty tree</p>
+    <p class="font-display text-2xl text-ink">No hierarchy nodes yet.</p>
+    <p class="max-w-sm text-sm text-ink-muted">
+      Create a root node to begin modelling stations, broadcast channels, and language
+      streams for this tenant.
+    </p>
+  </div>
 {:else}
   <ul class="space-y-3">
     {#each nodes as node (node.id)}

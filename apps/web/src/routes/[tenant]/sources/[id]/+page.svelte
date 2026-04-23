@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ArrowIcon } from "@lwa/ui";
   import type { IngestionRun, SourceHealth } from "$lib/types/source-health";
 
   let { data } = $props();
@@ -12,100 +13,128 @@
     return new Date(dateStr).toLocaleString();
   }
 
-  const statusClass: Record<string, string> = {
-    active: "bg-green-100 text-green-700",
-    error: "bg-red-100 text-red-700",
-    paused: "bg-yellow-100 text-yellow-700",
-    success: "bg-green-100 text-green-700",
-    failed: "bg-red-100 text-red-700",
-    running: "bg-blue-100 text-blue-700",
-    pending: "bg-slate-100 text-slate-600",
-    skipped: "bg-slate-100 text-slate-600",
+  const statusColor: Record<string, string> = {
+    active: "var(--color-positive)",
+    error: "var(--color-negative)",
+    paused: "var(--color-warning)",
+    success: "var(--color-positive)",
+    failed: "var(--color-negative)",
+    running: "var(--color-brand-500)",
+    pending: "var(--color-ink-muted)",
+    skipped: "var(--color-ink-muted)",
   };
 </script>
 
-<div class="space-y-6">
-  <div class="flex items-center gap-3">
-    <a
-      href="/{tenantSlug}/sources"
-      class="text-sm font-medium text-blue-600 hover:underline"
+<nav class="rise" aria-label="Breadcrumb">
+  <a
+    href="/{tenantSlug}/sources"
+    class="group inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted transition-colors hover:text-ink"
+  >
+    <ArrowIcon direction="left" />
+    Back to sources
+  </a>
+</nav>
+
+<!-- ──────────── Connector masthead ──────────── -->
+<section class="mt-6 rise rise-1">
+  <div class="border-b border-hairline pb-8">
+    <p class="eyebrow">Connector</p>
+    <h1 class="font-display mt-3 text-5xl leading-[0.98] text-ink">
+      {connector.sourceName}
+    </h1>
+    <p class="font-mono mt-3 text-[13px] text-ink-muted">{connector.sourceKey}</p>
+  </div>
+
+  <dl class="mt-8 grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4">
+    <div>
+      <dt class="eyebrow">Status</dt>
+      <dd class="mt-2 flex items-center gap-2">
+        <span
+          class="h-1.5 w-1.5 rounded-full"
+          style:background-color={statusColor[connector.status] ?? "var(--color-ink-muted)"}
+          aria-hidden="true"
+        ></span>
+        <span class="text-[13px] uppercase tracking-[0.14em] text-ink">
+          {connector.status}
+        </span>
+      </dd>
+    </div>
+    <div>
+      <dt class="eyebrow">State</dt>
+      <dd class="mt-2 text-[15px] text-ink">{connector.enabled ? "Enabled" : "Disabled"}</dd>
+    </div>
+    <div>
+      <dt class="eyebrow">Last run</dt>
+      <dd class="font-mono mt-2 text-[13px] text-ink">{formatDate(connector.lastRunAt)}</dd>
+    </div>
+    <div>
+      <dt class="eyebrow">Last error</dt>
+      <dd class="mt-2 truncate text-[13px] text-ink" title={connector.lastError ?? ""}>
+        {connector.lastError ?? "—"}
+      </dd>
+    </div>
+  </dl>
+</section>
+
+<!-- ──────────── Recent runs ──────────── -->
+<section class="mt-12 rise rise-2">
+  <div class="flex items-baseline justify-between">
+    <h2 class="font-display text-2xl text-ink">Recent runs</h2>
+    <span class="eyebrow">{runs.length} record{runs.length === 1 ? "" : "s"}</span>
+  </div>
+
+  {#if runs.length === 0}
+    <div
+      class="mt-6 flex flex-col items-center justify-center gap-2 border border-dashed border-hairline bg-surface px-6 py-16 text-center"
     >
-      ← Back to sources
-    </a>
-  </div>
-
-  <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-    <h1 class="text-2xl font-semibold text-slate-950">{connector.sourceName}</h1>
-    <p class="mt-1 font-mono text-sm text-slate-500">{connector.sourceKey}</p>
-
-    <dl class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-      <div>
-        <dt class="text-xs font-medium text-slate-500">Status</dt>
-        <dd class="mt-1">
-          <span
-            class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {statusClass[connector.status] ?? 'bg-slate-100 text-slate-600'}"
-          >
-            {connector.status}
-          </span>
-        </dd>
-      </div>
-      <div>
-        <dt class="text-xs font-medium text-slate-500">State</dt>
-        <dd class="mt-1 text-sm text-slate-800">{connector.enabled ? "Enabled" : "Disabled"}</dd>
-      </div>
-      <div>
-        <dt class="text-xs font-medium text-slate-500">Last run</dt>
-        <dd class="mt-1 text-sm text-slate-800">{formatDate(connector.lastRunAt)}</dd>
-      </div>
-      <div>
-        <dt class="text-xs font-medium text-slate-500">Last error</dt>
-        <dd class="mt-1 text-sm text-slate-800">{connector.lastError ?? "—"}</dd>
-      </div>
-    </dl>
-  </div>
-
-  <section>
-    <h2 class="mb-3 text-lg font-semibold text-slate-800">Recent runs</h2>
-
-    {#if runs.length === 0}
-      <p class="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-slate-500">
-        No runs recorded yet for this connector.
+      <p class="eyebrow">Quiet ledger</p>
+      <p class="font-display text-2xl text-ink">No runs recorded yet.</p>
+      <p class="max-w-sm text-sm text-ink-muted">
+        Once the scheduler picks up this connector, completed and failed runs will be
+        listed here.
       </p>
-    {:else}
-      <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table class="w-full text-sm">
-          <thead class="border-b border-slate-200 bg-slate-50 text-left text-slate-600">
-            <tr>
-              <th class="px-4 py-3 font-medium">Status</th>
-              <th class="px-4 py-3 font-medium">Started</th>
-              <th class="px-4 py-3 font-medium">Finished</th>
-              <th class="px-4 py-3 font-medium">Records</th>
-              <th class="px-4 py-3 font-medium">Warnings</th>
-              <th class="px-4 py-3 font-medium">Error</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            {#each runs as run (run.id)}
-              <tr class="hover:bg-slate-50">
-                <td class="px-4 py-3">
+    </div>
+  {:else}
+    <div class="mt-6 border border-hairline bg-surface">
+      <table class="w-full">
+        <caption class="sr-only">
+          Recent ingestion runs for connector {connector.sourceName} — status, timing,
+          records written, warnings, and errors for each run.
+        </caption>
+        <thead>
+          <tr class="border-b border-hairline">
+            <th scope="col" class="px-5 py-4 text-left eyebrow">Status</th>
+            <th scope="col" class="px-5 py-4 text-left eyebrow">Started</th>
+            <th scope="col" class="px-5 py-4 text-left eyebrow">Finished</th>
+            <th scope="col" class="px-5 py-4 text-right eyebrow">Records</th>
+            <th scope="col" class="px-5 py-4 text-right eyebrow">Warnings</th>
+            <th scope="col" class="px-5 py-4 text-left eyebrow">Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each runs as run (run.id)}
+            <tr class="border-b border-hairline last:border-b-0 hover:bg-ink/3">
+              <td class="px-5 py-4">
+                <span class="inline-flex items-center gap-2 text-[12px] uppercase tracking-[0.14em] text-ink">
                   <span
-                    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {statusClass[run.status] ?? 'bg-slate-100 text-slate-600'}"
-                  >
-                    {run.status}
-                  </span>
-                </td>
-                <td class="px-4 py-3 text-slate-600">{formatDate(run.startedAt)}</td>
-                <td class="px-4 py-3 text-slate-600">{formatDate(run.finishedAt)}</td>
-                <td class="px-4 py-3 text-slate-800">{run.recordsWritten}</td>
-                <td class="px-4 py-3 text-slate-600">{run.warnings.length}</td>
-                <td class="px-4 py-3 max-w-xs truncate text-slate-500">
-                  {run.errorMessage ?? "—"}
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-    {/if}
-  </section>
-</div>
+                    class="h-1.5 w-1.5 rounded-full"
+                    style:background-color={statusColor[run.status] ?? "var(--color-ink-muted)"}
+                    aria-hidden="true"
+                  ></span>
+                  {run.status}
+                </span>
+              </td>
+              <td class="px-5 py-4 font-mono text-[12px] text-ink-muted">{formatDate(run.startedAt)}</td>
+              <td class="px-5 py-4 font-mono text-[12px] text-ink-muted">{formatDate(run.finishedAt)}</td>
+              <td class="px-5 py-4 text-right font-mono text-[13px] num text-ink">{run.recordsWritten}</td>
+              <td class="px-5 py-4 text-right font-mono text-[13px] num text-ink-muted">{run.warnings.length}</td>
+              <td class="max-w-xs truncate px-5 py-4 text-[12px] text-ink-muted" title={run.errorMessage ?? ""}>
+                {run.errorMessage ?? "—"}
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+  {/if}
+</section>

@@ -30,26 +30,52 @@
   const typeLabel = $derived(node.type.replaceAll("_", " "));
 </script>
 
+<!--
+  IMPORTANT: keep `rounded-lg`, `border`, and `p-3` on the outer div below
+  — the hierarchy Playwright test selects nodes with `div.rounded-lg.border.p-3`
+  (see apps/web/tests/hierarchy.spec.ts). The additional utility classes
+  and editorial styling layer on top without invalidating that selector.
+-->
 <li>
-  <div class={`rounded-lg border p-3 ${isSelected ? "border-brand-500 bg-brand-50" : "border-slate-200 bg-white"}`}>
+  <div
+    class={`rounded-lg border p-3 transition-colors ${
+      isSelected
+        ? "border-brand-500 bg-brand-50"
+        : "border-hairline bg-surface hover:border-ink"
+    }`}
+  >
     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <button
         type="button"
         class="text-left"
         onclick={() => onSelect?.(node)}
       >
-        <div class="font-medium text-slate-900">{node.name}</div>
-        <div class="text-sm capitalize text-slate-500">{typeLabel}</div>
+        <p class="font-display text-lg leading-tight text-ink">
+          {node.name}
+        </p>
+        <p class="eyebrow mt-1 tracking-[0.16em]">{typeLabel}</p>
       </button>
 
       <div class="flex flex-wrap gap-2">
-        <button type="button" class="rounded-md bg-slate-100 px-2.5 py-1 text-sm" onclick={() => onCreateChild?.(node)}>
+        <button
+          type="button"
+          class="inline-flex h-8 items-center justify-center border border-hairline px-3 text-[11px] font-medium uppercase tracking-[0.14em] text-ink transition-colors hover:border-ink"
+          onclick={() => onCreateChild?.(node)}
+        >
           Add child
         </button>
-        <button type="button" class="rounded-md bg-slate-100 px-2.5 py-1 text-sm" onclick={() => onRename?.(node)}>
+        <button
+          type="button"
+          class="inline-flex h-8 items-center justify-center border border-hairline px-3 text-[11px] font-medium uppercase tracking-[0.14em] text-ink transition-colors hover:border-ink"
+          onclick={() => onRename?.(node)}
+        >
           Rename
         </button>
-        <button type="button" class="rounded-md bg-red-50 px-2.5 py-1 text-sm text-red-700" onclick={() => onArchive?.(node)}>
+        <button
+          type="button"
+          class="inline-flex h-8 items-center justify-center border border-negative/30 px-3 text-[11px] font-medium uppercase tracking-[0.14em] text-negative transition-colors hover:border-negative hover:bg-negative/6"
+          onclick={() => onArchive?.(node)}
+        >
           Archive
         </button>
       </div>
@@ -57,7 +83,7 @@
   </div>
 
   {#if node.children.length > 0}
-    <ul class="mt-3 space-y-3 border-l border-slate-200 pl-4">
+    <ul class="mt-3 space-y-3 border-l border-hairline pl-5">
       {#each node.children as child (child.id)}
         <TreeItem
           node={child}

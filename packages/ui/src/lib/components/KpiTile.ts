@@ -19,6 +19,6 @@ export function formatDeltaPct(deltaPct: number | null) {
 }
 
 export function deltaTone(deltaPct: number | null) {
-  if (deltaPct === null) return "text-slate-500";
-  return deltaPct >= 0 ? "text-emerald-600" : "text-red-600";
+  if (deltaPct === null) return "text-ink-muted";
+  return deltaPct >= 0 ? "text-positive" : "text-negative";
 }

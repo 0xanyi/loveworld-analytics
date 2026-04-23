@@ -17,14 +17,22 @@
   ];
 </script>
 
-<div class="flex flex-wrap items-center gap-2" aria-label="Comparison picker">
-  {#each options as option}
-    <a
-      href={hrefFor(option.value)}
-      class={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${value === option.value ? "bg-slate-900 text-white" : "bg-white text-slate-700 hover:bg-slate-100"}`}
-      aria-current={value === option.value ? "page" : undefined}
-    >
-      {option.label}
-    </a>
-  {/each}
+<div class="flex flex-col gap-2" aria-label="Comparison picker">
+  <span class="eyebrow">Compare</span>
+  <div class="flex items-center divide-x divide-hairline border border-hairline">
+    {#each options as option (option.value)}
+      {@const active = value === option.value}
+      <a
+        href={hrefFor(option.value)}
+        class={`px-4 py-2 text-[12px] font-medium uppercase tracking-[0.14em] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-paper ${
+          active
+            ? "bg-brand-500 text-paper"
+            : "text-ink-muted hover:text-ink hover:bg-brand-500/6"
+        }`}
+        aria-current={active ? "page" : undefined}
+      >
+        {option.label}
+      </a>
+    {/each}
+  </div>
 </div>
