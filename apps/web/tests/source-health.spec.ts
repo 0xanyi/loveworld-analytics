@@ -56,7 +56,7 @@ test("network_admin can view source health list and detail", async ({ page }) =>
   await page.getByRole("link", { name: /view/i }).first().click();
 
   // Detail page shows connector name
-  await expect(page.getByText("Satellite (Manual)")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Satellite (Manual)" })).toBeVisible();
 
   // Detail page shows recent runs
   await expect(page.getByText("success")).toBeVisible();
@@ -94,7 +94,7 @@ test("station_manager can view source health list and detail", async ({ page }) 
 
   await page.getByRole("link", { name: /view/i }).first().click();
 
-  await expect(page.getByText("Satellite (Manual)")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Satellite (Manual)" })).toBeVisible();
   await expect(page.getByText("success")).toBeVisible();
 });
 
@@ -167,7 +167,7 @@ test("source health detail shows recent runs with records and timestamps", async
   await page.goto(`/${tenantSlug}/sources/${connectorId}`);
 
   // Connector summary
-  await expect(page.getByText("Satellite (Manual)")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Satellite (Manual)" })).toBeVisible();
 
   // Run data
   await expect(page.getByText("success")).toBeVisible();
@@ -206,7 +206,7 @@ test("source health detail shows empty state when no runs exist", async ({ page 
   await loginViaUi(page, user);
   await page.goto(`/${tenantSlug}/sources/${connectorId}`);
 
-  await expect(page.getByText("Satellite (Manual)")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Satellite (Manual)" })).toBeVisible();
   await expect(page.getByText(/no runs/i)).toBeVisible();
 });
 
