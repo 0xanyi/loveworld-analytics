@@ -265,6 +265,9 @@ importers:
       '@lwa/db':
         specifier: workspace:*
         version: link:../../packages/db
+      better-auth:
+        specifier: ^1.0.0
+        version: 1.6.5(@opentelemetry/api@1.9.1)(@sveltejs/kit@2.57.1(@opentelemetry/api@1.9.1)(@sveltejs/vite-plugin-svelte@4.0.4(svelte@5.55.4(@typescript-eslint/types@8.59.0))(vite@5.4.21(@types/node@22.19.17)(lightningcss@1.32.0)))(svelte@5.55.4(@typescript-eslint/types@8.59.0))(typescript@5.9.3)(vite@5.4.21(@types/node@22.19.17)(lightningcss@1.32.0)))(drizzle-orm@0.33.0(@opentelemetry/api@1.9.1)(kysely@0.28.16)(postgres@3.4.9))(svelte@5.55.4(@typescript-eslint/types@8.59.0))(vitest@1.6.1(@types/node@22.19.17)(jsdom@25.0.1)(lightningcss@1.32.0))
       bullmq:
         specifier: ^5.13.0
         version: 5.75.2

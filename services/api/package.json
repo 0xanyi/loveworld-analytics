@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test",
     "test": "vitest run",
-    "admin:create-tenant": "tsx --env-file-if-exists=../../.env src/admin/create-tenant.ts"
+    "admin:create-tenant": "tsx --env-file-if-exists=../../.env src/admin/create-tenant.ts",
+    "admin:set-password": "tsx --env-file-if-exists=../../.env src/admin/set-password.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.0",
@@ -22,6 +23,7 @@
     "@lwa/contracts": "workspace:*",
     "@lwa/crypto": "workspace:*",
     "@lwa/db": "workspace:*",
+    "better-auth": "^1.0.0",
     "bullmq": "^5.13.0",
     "drizzle-orm": "^0.33.0",
     "hono": "^4.6.0",

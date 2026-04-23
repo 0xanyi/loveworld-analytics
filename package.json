@@ -18,7 +18,8 @@
     "format:check": "prettier --check .",
     "db:migrate": "pnpm --filter @lwa/db migrate",
     "db:generate": "pnpm --filter @lwa/db generate",
-    "admin:create-tenant": "pnpm --filter @lwa/api admin:create-tenant"
+    "admin:create-tenant": "pnpm --filter @lwa/api admin:create-tenant",
+    "admin:set-password": "pnpm --filter @lwa/api admin:set-password --"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
