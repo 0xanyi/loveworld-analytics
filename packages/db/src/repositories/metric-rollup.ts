@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import type { Database } from "../client";
+import type { Database, DatabaseTransaction } from "../client";
 import type { MetricCategory, Granularity, RollupGranularity } from "../schema";
 
 export interface MetricRollupRepo {
@@ -66,31 +66,29 @@ function advisoryLockKey(parts: string[]): string {
   return signed.toString();
 }
 
-export function metricRollupRepo(db: Database): MetricRollupRepo {
+export function metricRollupRepo(db: Database | DatabaseTransaction): MetricRollupRepo {
   return {
-    async refreshBucket({
-      tenantId,
-      hierarchyNodeId,
-      metricCategory,
-      granularity,
-      recordGranularity,
-      bucketStart,
-      bucketEnd,
-    }) {
-      const startIso = bucketStart.toISOString();
-      const endIso = bucketEnd.toISOString();
-      const lockKey = advisoryLockKey([
-        tenantId,
-        hierarchyNodeId,
-        metricCategory,
-        granularity,
-        startIso,
-      ]);
+    async refreshBucket(input) {
+      const runRefresh = async (tx: DatabaseTransaction) => {
+        const {
+          tenantId,
+          hierarchyNodeId,
+          metricCategory,
+          granularity,
+          recordGranularity,
+          bucketStart,
+          bucketEnd,
+        } = input;
+        const startIso = bucketStart.toISOString();
+        const endIso = bucketEnd.toISOString();
+        const lockKey = advisoryLockKey([
+          tenantId,
+          hierarchyNodeId,
+          metricCategory,
+          granularity,
+          startIso,
+        ]);
 
-      // Wrap lock + compute + upsert in a single transaction so the advisory
-      // lock auto-releases on commit/abort. Any concurrent refresh for the
-      // same (tenant, node, category, granularity, bucket) tuple waits here.
-      await db.transaction(async (tx) => {
         await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw(lockKey)}::bigint)`);
         await tx.execute(sql`
           WITH RECURSIVE subtree AS (
@@ -152,7 +150,18 @@ export function metricRollupRepo(db: Database): MetricRollupRepo {
             has_adjustments  = excluded.has_adjustments,
             computed_at      = now();
         `);
-      });
+      };
+
+      // Wrap lock + compute + upsert in a single transaction so the advisory
+      // lock auto-releases on commit/abort. Any concurrent refresh for the
+      // same (tenant, node, category, granularity, bucket) tuple waits here.
+      // If the repo was constructed with an existing route transaction, reuse
+      // it so callers can make fact writes and rollup refreshes atomic.
+      if ("transaction" in db) {
+        await db.transaction(runRefresh);
+      } else {
+        await runRefresh(db);
+      }
     },
 
     async getAncestors(tenantId, nodeId) {

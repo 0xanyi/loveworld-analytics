@@ -8,11 +8,13 @@ import {
   connectorConfig,
   hierarchyNode,
   metricRecordRepo,
+  metricRollupRepo,
   source,
   tenant,
   tenantMembership,
   type Granularity,
   type MetricCategory,
+  type RollupGranularity,
 } from "@lwa/db";
 
 const bodySchema = z.object({
@@ -22,7 +24,6 @@ const bodySchema = z.object({
 
 export function entriesRoutes(db: Database): Hono {
   const app = new Hono();
-  const metricRecords = metricRecordRepo(db);
 
   app.post("/tenants/:slug/entries", async (c) => {
     const session = c.get("session");
@@ -103,28 +104,109 @@ export function entriesRoutes(db: Database): Hono {
       dimensions.barb_week_number = String(entry.barbWeekNumber);
     }
 
-    const { written } = await metricRecords.upsertMany([
-      {
-        tenantId: tenantAccess.tenantId,
-        sourceId: sourceRow.id,
-        connectorConfigId: configRow.id,
-        hierarchyNodeId: entry.hierarchyNodeId,
-        metricType: "households",
-        metricCategory: connector.category as MetricCategory,
-        dimensions,
-        periodStart: entry.period.start,
-        periodEnd: entry.period.end,
-        granularity,
-        rawValue: String(entry.householdsReached),
-        unit: "households",
-        provenance: `manual:user:${session.user.id}`,
-      },
-    ]);
+    const metricCategory = connector.category as MetricCategory;
+    const { written } = await db.transaction(async (tx) => {
+      const metricRecords = metricRecordRepo(tx);
+      const metricRollups = metricRollupRepo(tx);
+
+      const result = await metricRecords.upsertMany([
+        {
+          tenantId: tenantAccess.tenantId,
+          sourceId: sourceRow.id,
+          connectorConfigId: configRow.id,
+          hierarchyNodeId: entry.hierarchyNodeId,
+          metricType: "households",
+          metricCategory,
+          dimensions,
+          periodStart: entry.period.start,
+          periodEnd: entry.period.end,
+          granularity,
+          rawValue: String(entry.householdsReached),
+          unit: "households",
+          provenance: `manual:user:${session.user.id}`,
+        },
+      ]);
+
+      const rollupGranularity = mapManualRollupGranularity(granularity);
+      const bucketStart = bucketStartFor(entry.period.start, rollupGranularity);
+      const bucketEnd = bucketEndFor(bucketStart, rollupGranularity);
+      const ancestors = await metricRollups.getAncestors(tenantAccess.tenantId, entry.hierarchyNodeId);
+
+      for (const hierarchyNodeId of ancestors) {
+        await metricRollups.refreshBucket({
+          tenantId: tenantAccess.tenantId,
+          hierarchyNodeId,
+          metricCategory,
+          granularity: rollupGranularity,
+          recordGranularity: granularity,
+          bucketStart,
+          bucketEnd,
+        });
+      }
+
+      return result;
+    });
 
     return c.json({ written });
   });
 
   return app;
+}
+
+function mapManualRollupGranularity(granularity: Granularity): RollupGranularity {
+  switch (granularity) {
+    case "day":
+    case "week":
+    case "month":
+    case "quarter":
+      return granularity;
+    case "hour":
+      return "day";
+  }
+}
+
+function bucketStartFor(start: Date, granularity: RollupGranularity): Date {
+  const d = new Date(start);
+  d.setUTCMilliseconds(0);
+  d.setUTCSeconds(0);
+  d.setUTCMinutes(0);
+  d.setUTCHours(0);
+
+  switch (granularity) {
+    case "day":
+      return d;
+    case "week": {
+      const dow = (d.getUTCDay() + 6) % 7;
+      d.setUTCDate(d.getUTCDate() - dow);
+      return d;
+    }
+    case "month":
+      d.setUTCDate(1);
+      return d;
+    case "quarter": {
+      d.setUTCDate(1);
+      d.setUTCMonth(d.getUTCMonth() - (d.getUTCMonth() % 3));
+      return d;
+    }
+  }
+}
+
+function bucketEndFor(start: Date, granularity: RollupGranularity): Date {
+  const end = new Date(start);
+  switch (granularity) {
+    case "day":
+      end.setUTCDate(end.getUTCDate() + 1);
+      return end;
+    case "week":
+      end.setUTCDate(end.getUTCDate() + 7);
+      return end;
+    case "month":
+      end.setUTCMonth(end.getUTCMonth() + 1);
+      return end;
+    case "quarter":
+      end.setUTCMonth(end.getUTCMonth() + 3);
+      return end;
+  }
 }
 
 function inferManualGranularity(start: Date, end: Date): Granularity | null {

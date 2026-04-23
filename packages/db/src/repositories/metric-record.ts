@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { sql } from "drizzle-orm";
-import type { Database } from "../client";
+import type { Database, DatabaseTransaction } from "../client";
 import { metricRecord, type NewMetricRecord } from "../schema";
 
 /**
@@ -40,7 +40,7 @@ export interface MetricRecordRepo {
   upsertMany(drafts: MetricRecordDraft[]): Promise<{ written: number }>;
 }
 
-export function metricRecordRepo(db: Database): MetricRecordRepo {
+export function metricRecordRepo(db: Database | DatabaseTransaction): MetricRecordRepo {
   return {
     async upsertMany(drafts) {
       if (drafts.length === 0) return { written: 0 };
