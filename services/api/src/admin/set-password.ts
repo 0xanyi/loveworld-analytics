@@ -69,10 +69,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   try {
     const { createDb } = await import("@lwa/db");
     const email = parseArg("--email");
-    const password = parseArg("--password");
+    const password = parseArg("--password") ?? process.env.ADMIN_PASSWORD;
 
     if (!email || !password) {
       console.error("Usage: pnpm admin:set-password --email <email> --password <password>");
+      console.error("       ADMIN_PASSWORD=<password> pnpm admin:set-password --email <email>");
       process.exit(1);
     }
 
