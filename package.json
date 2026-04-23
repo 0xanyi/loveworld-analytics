@@ -18,7 +18,9 @@
     "format:check": "prettier --check .",
     "db:migrate": "pnpm --filter @lwa/db migrate",
     "db:generate": "pnpm --filter @lwa/db generate",
-    "admin:create-tenant": "pnpm --filter @lwa/api admin:create-tenant"
+    "admin:create-tenant": "pnpm --filter @lwa/api admin:create-tenant",
+    "admin:set-password": "pnpm --filter @lwa/api admin:set-password --",
+    "phase1:gate": "tsx --env-file-if-exists=.env scripts/phase1-gate.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -27,6 +29,7 @@
     "globals": "^17.5.0",
     "prettier": "^3.3.3",
     "prettier-plugin-svelte": "^3.5.1",
+    "tsx": "^4.19.0",
     "turbo": "^2.1.0",
     "typescript": "^5.5.4",
     "typescript-eslint": "^8.59.0"

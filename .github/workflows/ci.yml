@@ -43,7 +43,11 @@ jobs:
       AUTH_SECRET: ci_secret_at_least_32_characters_long
       AUTH_BASE_URL: http://localhost:3001
       LWA_KEK_CURRENT: v1
-      LWA_KEK_V1: dGVzdF9rZWtfYmFzZTY0X2F0X2xlYXN0XzMyX2J5dGVzX2xvbmdfb2s=
+      # Deterministic 32-byte test KEK (Buffer.alloc(32, 1).toString("base64")).
+      # envKekProvider rejects anything other than exactly 32 bytes when getKey()
+      # is invoked, so this fixture must decode to 32 bytes or every encryption
+      # path (e.g. POST /connectors) will throw at runtime.
+      LWA_KEK_V1: AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -89,9 +93,11 @@ jobs:
       REDIS_URL: redis://localhost:6379
       AUTH_SECRET: ci_secret_at_least_32_characters_long
       AUTH_BASE_URL: http://localhost:3001
+      API_BASE_URL: http://localhost:3001
       ALLOWED_ORIGINS: http://localhost:5173
       LWA_KEK_CURRENT: v1
-      LWA_KEK_V1: dGVzdF9rZWtfYmFzZTY0X2F0X2xlYXN0XzMyX2J5dGVzX2xvbmdfb2s=
+      # Deterministic 32-byte test KEK; see lint-typecheck-test for rationale.
+      LWA_KEK_V1: AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -117,6 +123,8 @@ jobs:
           done
           cat /tmp/lwa-api.log
           exit 1
+      - name: Run Phase 1 gate
+        run: pnpm phase1:gate
       - run: pnpm -F @lwa/web exec playwright install --with-deps chromium
       - run: pnpm -F @lwa/web test:e2e
       - name: Print API log on failure

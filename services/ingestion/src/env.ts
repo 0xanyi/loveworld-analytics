@@ -3,7 +3,7 @@ import { err, ok, type Result } from "@lwa/contracts";
 import { resolveFileEnv } from "@lwa/crypto";
 
 const EnvSchema = z.object({
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  NODE_ENV: z.enum(["development", "staging", "production", "test"]).default("development"),
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error"]).default("info"),
   DATABASE_URL: z
     .string()

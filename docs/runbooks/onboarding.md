@@ -17,26 +17,7 @@
 
 ## Steps
 
-1. **Create the admin user + credential** — *Phase 0 manual workaround* (platform owner's machine):
-
-   `admin:create-tenant` (step 2) creates the tenant + user + membership
-   rows but Phase 0 ships no way to set a login credential from the CLI.
-   Until Phase 1 adds `pnpm admin:set-password` (or an invite +
-   password-reset flow), create the user + Better Auth credential via the
-   sign-up endpoint first — this uses Better Auth's own scrypt hasher and
-   writes all `account` columns correctly:
-
-   ```bash
-   curl -X POST https://<production-api-url>/api/auth/sign-up/email \
-     -H 'Content-Type: application/json' \
-     -d '{"email":"tenant.admin@example.org","password":"<temp-password>","name":"Admin Name"}'
-   ```
-
-   Share the temporary password with the admin via a secure channel (not
-   email); they should change it on first login via `/account/password`
-   (Phase 1 UI) or a password-reset flow.
-
-2. **Create the tenant and attach the admin** (platform owner's machine):
+1. **Create the tenant and admin user** (platform owner's machine):
 
    ```bash
    DATABASE_URL=<production_url> pnpm admin:create-tenant \
@@ -45,24 +26,29 @@
      --admin-name "Admin Name"
    ```
 
-   The CLI finds the existing user by email (case-insensitive) and creates
-   only the tenant + `network_admin` membership rows. The admin can now
-   sign in at `/login` with the email + temporary password from step 1.
+2. **Set the temporary admin password**:
+
+   ```bash
+   DATABASE_URL=<production_url> ADMIN_PASSWORD='<temporary-password>' pnpm admin:set-password \
+     --email tenant.admin@example.org
+   ```
+
+   Share the temporary password through a secure channel. The admin should rotate it after first login.
 
 3. **Seed hierarchy** — admin logs in, navigates to `/<tenant>/settings/hierarchy`, and builds the tree (Phase 1 UI) or the platform owner runs the bulk-import CLI (Phase 4).
 
 4. **Add connectors** — one at a time (Phase 1+). For each, OAuth or API key flow + attach to hierarchy node(s) + trigger initial backfill.
 
-5. **Invite team** — from `/<tenant>/team`, admin invites station managers, board viewers, analysts with correct roles + scope.
+5. **Assign team access** — until the tenant/team invite UI ships in a later phase, the platform owner provisions additional users and memberships through an operator workflow.
 
-6. **First board dashboard review** — platform owner walks through with stakeholders, exports a PDF board pack.
+6. **First board dashboard review** — platform owner walks through the live dashboard with stakeholders and records any hierarchy/source corrections.
 
 ## Success criteria
 
 - [ ] Tenant login works
 - [ ] At least one connector active and ingesting
 - [ ] Board dashboard renders with real data for current period
-- [ ] First PDF export generated
+- [ ] First stakeholder dashboard review completed
 
 ## Troubleshooting
 

@@ -3,13 +3,23 @@ import { expect, test, type Page } from "@playwright/test";
 import { loginViaUi, provisionUser } from "./support/e2e";
 
 async function openAccountPanel(page: Page) {
+  const trigger = page.getByRole("button", { name: "Account menu" });
   const panel = page.locator("#account-panel");
-  await page.getByRole("button", { name: "Account menu" }).click();
-  if ((await panel.count()) === 0) {
-    await page.getByRole("button", { name: "Account menu" }).click();
+
+  await expect(trigger).toBeVisible();
+  await expect(trigger).toBeEnabled();
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await trigger.click();
+    try {
+      await expect(panel).toBeVisible({ timeout: 2_000 });
+      return panel;
+    } catch {
+      if (attempt === 1) throw new Error("account panel did not open");
+    }
   }
-  await expect(panel).toBeVisible();
-  return panel;
+
+  throw new Error("account panel did not open");
 }
 
 test("single-tenant users do not see switch tenant in the account panel", async ({ page }) => {

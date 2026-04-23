@@ -122,10 +122,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(`  Tenant   : ${result.tenant.name} (${result.tenant.slug})`);
     console.log(`  Admin    : ${result.user.email}`);
     console.log("");
-    console.log("Next: enable admin login (manual step for Phase 0)");
-    console.log("  The user row exists but has no password credential in Better Auth's");
-    console.log("  'account' table. See docs/runbooks/onboarding.md (added in Task 10)");
-    console.log("  for detailed instructions.");
+    console.log("Next: set the admin login password");
+    console.log(`  pnpm admin:set-password --email ${result.user.email} --password <temporary-password>`);
+    console.log("  Share the temporary password through a secure channel and rotate it after first login.");
     process.exit(0);
   } catch (e) {
     console.error(`✗ Failed: ${e instanceof Error ? e.message : String(e)}`);

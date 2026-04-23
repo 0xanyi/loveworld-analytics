@@ -23,6 +23,34 @@ describe("loadEnv", () => {
     }
   });
 
+  it("accepts staging NODE_ENV and SMTP_SECURE", () => {
+    const r = loadEnv({
+      ...VALID,
+      NODE_ENV: "staging",
+      SMTP_SECURE: "true",
+      ALLOWED_ORIGINS: "https://app.example.com",
+    });
+    expect(isOk(r)).toBe(true);
+    if (isOk(r)) {
+      expect(r.value.NODE_ENV).toBe("staging");
+      expect(r.value.SMTP_SECURE).toBe(true);
+    }
+  });
+
+  it("requires ALLOWED_ORIGINS in staging and production", () => {
+    const staging = loadEnv({ ...VALID, NODE_ENV: "staging" });
+    expect(isErr(staging)).toBe(true);
+    if (isErr(staging)) {
+      expect(staging.error.flatten().fieldErrors.ALLOWED_ORIGINS).toBeDefined();
+    }
+
+    const production = loadEnv({ ...VALID, NODE_ENV: "production" });
+    expect(isErr(production)).toBe(true);
+    if (isErr(production)) {
+      expect(production.error.flatten().fieldErrors.ALLOWED_ORIGINS).toBeDefined();
+    }
+  });
+
   it("rejects AUTH_SECRET shorter than 32 chars", () => {
     const r = loadEnv({ ...VALID, AUTH_SECRET: "too-short" });
     expect(isErr(r)).toBe(true);
