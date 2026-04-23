@@ -6,15 +6,58 @@
  * tailwindcss into @lwa/ui's pnpm-isolated node_modules). Shadcn-svelte
  * follows the same pattern: the component library consumes the host app's
  * Tailwind configuration.
+ *
+ * Aesthetic: "The Quarterly" — editorial minimalism with warm paper tones,
+ * a burnt-sienna accent, and a serif/sans pairing (Fraunces + Geist).
+ *
+ * Colour note: `--color-ink-muted` is `#6a6058` (≈4.84:1 on paper,
+ * ≈5.02:1 on surface). That clears WCAG 2.1 AA for normal text and
+ * preserves enough tonal separation from ink for the eyebrow / dek
+ * typography to still read as subordinate metadata.
  */
 
-@theme {
-  --color-brand-50: oklch(0.98 0.01 250);
-  --color-brand-500: oklch(0.55 0.18 250);
-  --color-brand-600: oklch(0.48 0.20 250);
-  --color-brand-900: oklch(0.28 0.12 250);
+/*
+ * Tell Tailwind v4 to scan the UI component sources in this package.
+ * Without this, utilities used ONLY inside @lwa/ui (e.g. `text-paper`,
+ * `hover:bg-ink/6`) are silently dropped at build time — leaving the
+ * visual bug where Button text disappears because `text-paper` never
+ * emits. Path is resolved relative to this CSS file.
+ */
+@source "../lib";
 
-  --font-sans: "Inter", "system-ui", "sans-serif";
+@theme {
+  /* Accent palette — burnt sienna. Keeps the `brand-*` token names so
+   * existing Tailwind classes (bg-brand-500, text-brand-600) remap without
+   * churn. */
+  --color-brand-50: #fbeee6;
+  --color-brand-100: #f5d9ca;
+  --color-brand-500: #a8350f;
+  --color-brand-600: #8a2a09;
+  --color-brand-700: #6c2007;
+  --color-brand-900: #3d1104;
+
+  /* Paper / ink surface tokens — warm, not neutral grey. */
+  --color-paper: #f5f1ea;
+  --color-paper-soft: #ece6d8;
+  --color-surface: #fbf8f2;
+  --color-ink: #1c1917;
+  --color-ink-muted: #6a6058;
+  --color-hairline: #e7e1d4;
+
+  --color-positive: #3f6b3a;
+  --color-negative: #a1272e;
+  /* Amber used for "paused" / transient-warning states in the source
+   * health views. Named `warning` (not `amber`) so the semantic is
+   * portable to a later palette swap. */
+  --color-warning: #a16207;
+
+  /* Font stacks target the fontsource "Variable" family names (self-hosted
+   * WOFF2 via @fontsource-variable/*). Never load from Google Fonts — the
+   * Munich court ruling of Jan 2022 held that embedded Google Fonts leaks
+   * visitor IPs in a way that violates GDPR without consent. */
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Fraunces Variable", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 :root {

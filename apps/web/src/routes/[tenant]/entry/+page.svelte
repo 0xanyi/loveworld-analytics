@@ -1,7 +1,7 @@
 <script lang="ts">
   import { applyAction, deserialize } from "$app/forms";
   import type { ActionResult } from "@sveltejs/kit";
-  import { FormFromSchema } from "@lwa/ui";
+  import { Chevron, FormFromSchema } from "@lwa/ui";
 
   let { data, form } = $props();
 
@@ -94,48 +94,89 @@
   const overrides = $derived({ ...hierarchyOverride });
 </script>
 
-<div class="mx-auto max-w-2xl space-y-6 p-6">
-  <h1 class="text-2xl font-semibold text-slate-950">Manual entry</h1>
+<div class="mx-auto max-w-3xl">
+  <!-- ──────────── Header ──────────── -->
+  <section class="rise">
+    <div class="border-b border-hairline pb-8">
+      <p class="eyebrow">Write ledger</p>
+      <h1 class="font-display mt-3 text-6xl leading-[0.95] text-ink">
+        Manual entry
+      </h1>
+      <p class="mt-4 max-w-xl text-[15px] leading-relaxed text-ink-muted">
+        Log a period of viewership directly into the rollup. Entries are attributed to
+        the selected hierarchy node and versioned alongside automated ingestion.
+      </p>
+    </div>
+  </section>
 
   {#if manualConnectors.length === 0}
-    <p class="text-slate-500">No manual connectors are configured for this tenant.</p>
+    <section
+      class="mt-12 flex flex-col items-center justify-center gap-3 border border-dashed border-hairline bg-surface px-8 py-20 text-center rise rise-1"
+    >
+      <p class="eyebrow">Unavailable</p>
+      <p class="font-display text-3xl text-ink">
+        No manual connectors configured.
+      </p>
+      <p class="max-w-md text-sm text-ink-muted">
+        Ask your network administrator to enable a manual connector for this tenant
+        before recording entries.
+      </p>
+    </section>
   {:else}
-    <div class="space-y-4">
-      <label class="block">
-        <span class="text-sm font-medium text-slate-700">Source</span>
-        <select
-          class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-          bind:value={selectedKey}
-          aria-label="Source"
-        >
-          {#each manualConnectors as connector (connector.key)}
-            <option value={connector.key}>{connector.name}</option>
-          {/each}
-        </select>
-      </label>
-
-      {#if selectedConnector?.entrySchema}
-        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          {#key formInstance}
-            <FormFromSchema
-              schema={selectedConnector.entrySchema as EntryJsonSchema}
-              overrides={overrides}
-              onSubmit={handleEntrySubmit}
-              submitLabel="Submit"
-            />
-          {/key}
+    <!-- ──────────── Source picker ──────────── -->
+    <section class="mt-10 rise rise-1">
+      <label class="block max-w-md">
+        <span class="eyebrow">Source</span>
+        <div class="relative mt-2">
+          <select
+            class="field-underline appearance-none pr-6"
+            bind:value={selectedKey}
+            aria-label="Source"
+          >
+            {#each manualConnectors as connector (connector.key)}
+              <option value={connector.key}>{connector.name}</option>
+            {/each}
+          </select>
+          <Chevron class="absolute right-0 top-1/2 -translate-y-1/2" />
         </div>
-      {/if}
-    </div>
+      </label>
+    </section>
 
+    <!-- ──────────── Entry form ──────────── -->
+    {#if selectedConnector?.entrySchema}
+      <section
+        class="mt-10 border border-hairline bg-surface p-8 rise rise-2 lg:p-10"
+      >
+        <p class="eyebrow mb-6">Entry · {selectedConnector.name}</p>
+        {#key formInstance}
+          <FormFromSchema
+            schema={selectedConnector.entrySchema as EntryJsonSchema}
+            overrides={overrides}
+            onSubmit={handleEntrySubmit}
+            submitLabel="Submit"
+          />
+        {/key}
+      </section>
+    {/if}
+
+    <!-- ──────────── Result banners ──────────── -->
     {#if form?.success}
-      <p class="rounded-md bg-green-50 p-4 text-sm font-medium text-green-700" role="status">
+      <p
+        class="mt-8 flex items-center gap-3 border-l-2 border-positive bg-positive/6 px-4 py-3 text-sm font-medium text-positive rise"
+        role="status"
+      >
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-positive" aria-hidden="true"></span>
         Entry saved
       </p>
     {/if}
 
     {#if form?.error}
-      <p class="rounded-md bg-red-50 p-4 text-sm text-red-700" role="alert">{form.error}</p>
+      <p
+        class="mt-8 border-l-2 border-negative bg-negative/6 px-4 py-3 text-sm text-negative rise"
+        role="alert"
+      >
+        {form.error}
+      </p>
     {/if}
   {/if}
 </div>

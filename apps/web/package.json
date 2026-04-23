@@ -12,6 +12,9 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@fontsource-variable/fraunces": "^5.2.9",
+    "@fontsource-variable/geist": "^5.2.8",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@lwa/auth": "workspace:*",
     "@lwa/ui": "workspace:*",
     "@sveltejs/kit": "^2.5.0",

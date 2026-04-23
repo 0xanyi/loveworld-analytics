@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ArrowIcon } from "@lwa/ui";
   import type { SourceHealth } from "$lib/types/source-health";
 
   let { data } = $props();
@@ -11,68 +12,116 @@
     return new Date(dateStr).toLocaleString();
   }
 
-  const statusClass: Record<string, string> = {
-    active: "bg-green-100 text-green-700",
-    error: "bg-red-100 text-red-700",
-    paused: "bg-yellow-100 text-yellow-700",
+  // Status glyph + label formatting. Colours come from CSS vars so the
+  // palette stays consistent with the rest of the editorial system — no
+  // ad-hoc bg-green-100 / text-red-700 pairs.
+  const statusColor: Record<string, string> = {
+    active: "var(--color-positive)",
+    error: "var(--color-negative)",
+    paused: "var(--color-warning)",
   };
 </script>
 
-<div class="space-y-6">
-  <h1 class="text-2xl font-semibold text-slate-950">Source health</h1>
-
-  {#if connectors.length === 0}
-    <p class="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-slate-500">
-      No sources configured for this tenant.
+<section class="rise">
+  <div class="border-b border-hairline pb-8">
+    <p class="eyebrow">Ingestion</p>
+    <h1 class="font-display mt-3 text-6xl leading-[0.95] text-ink">
+      Source health
+    </h1>
+    <p class="mt-4 max-w-2xl text-[15px] leading-relaxed text-ink-muted">
+      Status of every connector configured for this tenant — including the most recent
+      run, current state, and last surfaced error.
     </p>
-  {:else}
-    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <table class="w-full text-sm">
-        <thead class="border-b border-slate-200 bg-slate-50 text-left text-slate-600">
-          <tr>
-            <th class="px-4 py-3 font-medium">Source</th>
-            <th class="px-4 py-3 font-medium">Key</th>
-            <th class="px-4 py-3 font-medium">Status</th>
-            <th class="px-4 py-3 font-medium">State</th>
-            <th class="px-4 py-3 font-medium">Last run</th>
-            <th class="px-4 py-3 font-medium">Last error</th>
-            <th class="px-4 py-3 font-medium"></th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          {#each connectors as connector (connector.id)}
-            <tr class="hover:bg-slate-50">
-              <td class="px-4 py-3 font-medium text-slate-800">{connector.sourceName}</td>
-              <td class="px-4 py-3 font-mono text-xs text-slate-500">{connector.sourceKey}</td>
-              <td class="px-4 py-3">
-                <span
-                  class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {statusClass[connector.status] ?? 'bg-slate-100 text-slate-600'}"
-                >
-                  {connector.status}
-                </span>
-              </td>
-              <td class="px-4 py-3 text-slate-600">
-                {connector.enabled ? "Enabled" : "Disabled"}
-              </td>
-              <td class="px-4 py-3 text-slate-500">{formatDate(connector.lastRunAt)}</td>
-              <td
-                class="max-w-xs truncate px-4 py-3 text-slate-500"
-                title={connector.lastError ?? ""}
+  </div>
+</section>
+
+{#if connectors.length === 0}
+  <section
+    class="mt-12 flex flex-col items-center justify-center gap-3 border border-dashed border-hairline bg-surface px-8 py-20 text-center rise rise-1"
+  >
+    <p class="eyebrow">Empty register</p>
+    <p class="font-display text-3xl text-ink">No sources configured.</p>
+    <p class="max-w-md text-sm text-ink-muted">
+      Configure a connector for this tenant to begin ingesting data into the rollup.
+    </p>
+  </section>
+{:else}
+  <section class="mt-10 border border-hairline bg-surface rise rise-1">
+    <table class="w-full">
+      <caption class="sr-only">
+        Connectors configured for tenant {tenantSlug}, showing current status, state,
+        last ingestion run, and most recent error for each source.
+      </caption>
+      <thead>
+        <tr class="border-b border-hairline">
+          <th scope="col" class="px-5 py-4 text-left eyebrow">Source</th>
+          <th scope="col" class="px-5 py-4 text-left eyebrow">Key</th>
+          <th scope="col" class="px-5 py-4 text-left eyebrow">Status</th>
+          <th scope="col" class="px-5 py-4 text-left eyebrow">State</th>
+          <th scope="col" class="px-5 py-4 text-left eyebrow">Last run</th>
+          <th scope="col" class="px-5 py-4 text-left eyebrow">Last error</th>
+          <th scope="col" class="px-5 py-4 text-right eyebrow" aria-label="Actions"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {#each connectors as connector (connector.id)}
+          <tr
+            class="border-b border-hairline transition-colors last:border-b-0 hover:bg-ink/3"
+          >
+            <td class="px-5 py-5">
+              <p class="font-display text-lg leading-tight text-ink">
+                {connector.sourceName}
+              </p>
+            </td>
+            <td class="px-5 py-5">
+              <span class="font-mono text-[12px] text-ink-muted">{connector.sourceKey}</span>
+            </td>
+            <td class="px-5 py-5">
+              <span
+                class="inline-flex items-center gap-2 border border-hairline px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-ink"
               >
-                {connector.lastError ?? "—"}
-              </td>
-              <td class="px-4 py-3">
-                <a
-                  href="/{tenantSlug}/sources/{connector.id}"
-                  class="text-sm font-medium text-blue-600 hover:underline"
-                >
-                  View
-                </a>
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
-  {/if}
-</div>
+                <span
+                  class="h-1.5 w-1.5 rounded-full"
+                  style:background-color={statusColor[connector.status] ?? "var(--color-ink-muted)"}
+                  aria-hidden="true"
+                ></span>
+                {connector.status}
+              </span>
+            </td>
+            <td class="px-5 py-5">
+              <span class="text-sm text-ink-muted">
+                {connector.enabled ? "Enabled" : "Disabled"}
+              </span>
+            </td>
+            <td class="px-5 py-5">
+              <span class="font-mono text-[12px] text-ink-muted">
+                {formatDate(connector.lastRunAt)}
+              </span>
+            </td>
+            <td
+              class="max-w-xs truncate px-5 py-5 text-sm text-ink-muted"
+              title={connector.lastError ?? ""}
+            >
+              {connector.lastError ?? "—"}
+            </td>
+            <td class="px-5 py-5 text-right">
+              <a
+                href="/{tenantSlug}/sources/{connector.id}"
+                class="group inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-ink transition-colors hover:text-brand-600"
+                aria-label={`View ${connector.sourceName}`}
+              >
+                View
+                <ArrowIcon />
+              </a>
+            </td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </section>
+
+  <footer class="mt-10 flex items-center justify-between border-t border-hairline pt-6 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+    <span>{tenantSlug}</span>
+    <span class="font-mono">§ {connectors.length} connector{connectors.length === 1 ? "" : "s"}</span>
+  </footer>
+{/if}

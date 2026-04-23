@@ -5,6 +5,14 @@
   let { class: className = "", children, ...rest }: HTMLAttributes<HTMLDivElement> = $props();
 </script>
 
-<div class={cn("rounded-xl border border-slate-200 bg-white p-6 shadow-sm", className)} {...rest}>
+<!-- Editorial card: hairline border, subtle surface, no heavy shadow.
+     Cards feel lifted from paper, not floating over it. -->
+<div
+  class={cn(
+    "relative rounded-none border border-hairline bg-surface p-6",
+    className,
+  )}
+  {...rest}
+>
   {@render children?.()}
 </div>
