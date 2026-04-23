@@ -14,7 +14,9 @@
   // ── user menu ────────────────────────────────────────────────────────
   let userMenuOpen = $state(false);
   let userMenuEl = $state<HTMLDivElement | null>(null);
+  let userMenuTriggerEl = $state<HTMLButtonElement | null>(null);
   let signingOut = $state(false);
+  let signOutError = $state<string | null>(null);
 
   const userDisplay = $derived(
     data.currentUser?.name?.trim()
@@ -26,11 +28,15 @@
 
   function toggleUserMenu(event: Event) {
     event.stopPropagation();
+    signOutError = null;
     userMenuOpen = !userMenuOpen;
   }
 
-  function closeUserMenu() {
+  function closeUserMenu(options?: { restoreFocus?: boolean }) {
     userMenuOpen = false;
+    if (options?.restoreFocus) {
+      userMenuTriggerEl?.focus();
+    }
   }
 
   // Click-outside + Escape handlers. Registered only while the menu is
@@ -42,7 +48,7 @@
       if (userMenuEl && !userMenuEl.contains(e.target as Node)) closeUserMenu();
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeUserMenu();
+      if (e.key === "Escape") closeUserMenu({ restoreFocus: true });
     };
     document.addEventListener("click", onDocClick);
     document.addEventListener("keydown", onKey);
@@ -54,17 +60,32 @@
 
   async function handleSignOut() {
     signingOut = true;
+    signOutError = null;
     try {
-      await authClient.signOut();
+      const result = await authClient.signOut();
+      if (
+        (typeof result === "object" && result !== null && "error" in result && result.error) ||
+        (typeof result === "object" &&
+          result !== null &&
+          "data" in result &&
+          typeof result.data === "object" &&
+          result.data !== null &&
+          "success" in result.data &&
+          result.data.success === false)
+      ) {
+        throw new Error("sign-out failed");
+      }
+      closeUserMenu();
+      // Clear any cached layout data bound to the previous session, then
+      // bounce to login. invalidateAll() ensures server loads re-run against
+      // the now-unauthenticated cookie state if the user navigates back.
+      await invalidateAll();
+      await goto("/login");
+    } catch {
+      signOutError = "Unable to sign out right now. Please try again.";
     } finally {
       signingOut = false;
-      closeUserMenu();
     }
-    // Clear any cached layout data bound to the previous session, then
-    // bounce to login. invalidateAll() ensures server loads re-run against
-    // the now-unauthenticated cookie state if the user navigates back.
-    await invalidateAll();
-    await goto("/login");
   }
 
   type NavLink = { href: string; label: string; requires: Capability; match: (pathname: string) => boolean };
@@ -167,9 +188,11 @@
     <div class="relative ml-2 md:ml-4" bind:this={userMenuEl}>
       <button
         type="button"
+        bind:this={userMenuTriggerEl}
         onclick={toggleUserMenu}
-        aria-haspopup="menu"
+        aria-haspopup="dialog"
         aria-expanded={userMenuOpen}
+        aria-controls="account-panel"
         aria-label="Account menu"
         class="group flex items-center gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
       >
@@ -186,7 +209,8 @@
 
       {#if userMenuOpen}
         <div
-          role="menu"
+          id="account-panel"
+          aria-label="Account panel"
           class="absolute right-0 top-full z-50 mt-2 w-72 border border-hairline bg-paper shadow-[0_10px_30px_-12px_rgba(28,25,23,0.25)]"
         >
           <!-- Identity header: name + email, monospaced for precision. -->
@@ -208,13 +232,21 @@
           {#if (data.membershipCount ?? 1) > 1}
             <a
               href="/"
-              role="menuitem"
-              onclick={closeUserMenu}
+              onclick={() => closeUserMenu()}
               class="flex items-center justify-between px-5 py-3 text-[12px] font-medium uppercase tracking-[0.16em] text-ink-muted transition-colors hover:bg-ink/4 hover:text-ink focus-visible:outline-none focus-visible:bg-ink/4 focus-visible:text-ink"
             >
               <span>Switch tenant</span>
               <span aria-hidden="true" class="font-mono text-[11px]">→</span>
             </a>
+          {/if}
+
+          {#if signOutError}
+            <p
+              class="border-t border-hairline px-5 py-3 text-sm text-negative"
+              role="alert"
+            >
+              {signOutError}
+            </p>
           {/if}
 
           <!-- Sign out — separated with a hairline so it reads as
@@ -223,7 +255,6 @@
           <div class="border-t border-hairline">
             <button
               type="button"
-              role="menuitem"
               onclick={handleSignOut}
               disabled={signingOut}
               class="flex w-full items-center justify-between px-5 py-3 text-[12px] font-medium uppercase tracking-[0.16em] text-negative transition-colors hover:bg-negative/6 focus-visible:outline-none focus-visible:bg-negative/6 disabled:opacity-60"

@@ -63,8 +63,11 @@ export async function provisionUser(tenants: TenantScenario[]) {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      origin: "http://localhost:3001",
-      referer: "http://localhost:3001/",
+      // Better Auth validates browser origins against ALLOWED_ORIGINS.
+      // Web e2e runs through the app at :5173, so sign-up must present
+      // the same origin as the later sign-in flow.
+      origin: "http://localhost:5173",
+      referer: "http://localhost:5173/",
     },
     body: JSON.stringify({ email, password, name }),
   });
@@ -80,7 +83,7 @@ export async function provisionUser(tenants: TenantScenario[]) {
       cwd: repoRoot,
       env: {
         ...process.env,
-        DATABASE_URL: process.env.DATABASE_URL ?? "postgres://lwa:lwa_dev@localhost:5432/lwa_dev",
+        DATABASE_URL: process.env.DATABASE_URL ?? "postgres://lwa:lwa_dev@localhost:5434/lwa_dev",
       },
       encoding: "utf8",
     },
