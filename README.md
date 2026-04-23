@@ -90,8 +90,13 @@ LWA_KEK_CURRENT=v1
 LWA_KEK_V1=<base64-32-byte-key>
 ```
 
-`AUTH_BASE_URL` must point at the API service because Better Auth is mounted at
-`/api/auth/*` there.
+`AUTH_BASE_URL` should point at the API service (`:3001`). Better Auth uses it
+to build absolute URLs inside outbound magic-link emails and OAuth redirect
+URIs — both need to land on `/api/auth/*`, which is served by the API, not the
+web app. Email+password sign-in will still succeed if this is misconfigured
+(the SvelteKit `authClient` reads `VITE_API_BASE_URL` separately, and CORS is
+driven by `ALLOWED_ORIGINS`), so the misconfiguration only surfaces once magic
+links or OAuth are exercised.
 
 Then bring up infra and start the dev servers:
 
