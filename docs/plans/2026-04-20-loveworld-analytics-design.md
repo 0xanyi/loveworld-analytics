@@ -52,7 +52,7 @@ Loveworld Analytics is **a new, standalone product** with a different audience (
 
 ### In scope for v1
 
-- Ingestion from: manual satellite, manual Freeview, GA4, Cloudflare, CastNet video events, YouTube Data API, Meta Graph (FB + IG), Smart-TV telemetry
+- Ingestion from: manual satellite, manual Freeview, GA4, Cloudflare, YouTube Data API, Meta Graph (FB + IG), Smart-TV telemetry
 - Connector framework supporting plug-in addition of future sources
 - Multi-tenant with roles: `network_admin`, `station_manager`, `board_viewer`, `analyst`
 - Hierarchy: Tenant → Station → Broadcast Channel → Language Channel
@@ -288,7 +288,7 @@ metric_rollup
   effective_total       numeric        -- sum of effective_values
   raw_total             numeric        -- sum of raw_values (for "what changed due to corrections")
   record_count          int
-  source_breakdown      jsonb          -- { youtube: 12000, castnet: 3400, … } powers drill-down
+  source_breakdown      jsonb          -- { youtube: 12000, ga4: 3400, … } powers drill-down
   has_adjustments       boolean        -- drives "adjusted" badge in UI
   computed_at           timestamptz
   PRIMARY KEY (tenant_id, hierarchy_node_id, metric_category, granularity, bucket_start)
@@ -433,7 +433,6 @@ One OAuth grant → many `platform_account` rows — important for stations mana
 |---|---|---|---|---|
 | **P0** | `manual_satellite` | manual | 1d | none |
 | **P0** | `manual_freeview` | manual | 1d | none |
-| **P0** | `castnet_events` | pull | 2d | DB access / webhook from CastNet |
 | **P0** | `cloudflare_analytics` | pull | 2d | API token |
 | **P0** | `ga4` | pull | 4d | service account credentials |
 | **P1** | `youtube` | pull | 5d | OAuth app verification |
@@ -443,6 +442,8 @@ One OAuth grant → many `platform_account` rows — important for stations mana
 | **P3 (post-GA)** | `x` | pull | 4d | paid tier access |
 
 P0 alone gives the board a meaningful first dashboard by Week 4.
+
+`castnet_events` was removed from Phase 1 because CastNet is being retired in favour of the Love World Europe One platform. The replacement integration should land as a new connector when that platform exposes stable analytics data.
 
 ### Adding a new connector later — developer flow
 
@@ -492,7 +493,6 @@ All writes upsert on `UNIQUE(tenant_id, source_id, hierarchy_node_id, metric_typ
 | Meta Graph | `0 4 * * *` | Insights firm up after ~24h |
 | GA4 | `0 2 * * *` + `30 * * * *` hourly top-up | Real-time available, less stable; daily re-run corrects |
 | Cloudflare | `0 * * * *` (hourly) | Near-real-time, cheap to pull |
-| CastNet events | `*/15 * * * *` | Internal, no rate concern |
 | Smart TV telemetry | `0 * * * *` | Default hourly |
 | Manual | No schedule | User-driven |
 
@@ -1144,7 +1144,7 @@ Total PR gate: ~10–12 min.
 | Phase | Weeks | Deliverable | Gate |
 |---|---|---|---|
 | **0 — Foundations** | 1–2 | Monorepo scaffold, schema migrations, Better Auth, Dokploy staging + prod, CI pipeline, **Meta app review submitted** | Staging URL reachable, first tenant seeded, login works |
-| **1 — P0 connectors** | 3–4 | Manual sat+Freeview, CastNet, Cloudflare, GA4. TV-households + Web tiles live. | LW Europe staff log a real week end-to-end |
+| **1 — P0 connectors** | 3–4 | Manual sat+Freeview, Cloudflare, GA4. TV-households + Web tiles live. | LW Europe staff log a real week end-to-end |
 | **2 — Streaming coverage** | 5–6 | YouTube + Smart TV telemetry. Streaming tile live. PDF export. Adjustment UX + reminders. | Board member opens dashboard on iPad, exports PDF |
 | **3 — Social coverage** | 7–8 | Meta Graph (FB + IG) assuming review clears. All 5 KPI tiles complete. Second tenant onboarded. | Real board meeting uses dashboard; cross-tenant canaries green |
 | **4 — v1 GA** | 9–10 | Full E2E suite green, runbooks published, backup restore drill verified, docs complete, handoff to operations | v1 release announcement |

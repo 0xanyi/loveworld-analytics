@@ -4,7 +4,7 @@
 
 **Goal:** Turn Phase 0's empty skeleton into a working analytics platform where LW Europe staff can log one real week end-to-end: connect the four P0 sources (2 manual + 2 pull), watch data flow through the ingestion pipeline into the rollup table, and see TV-households + Web tiles render on the tenant dashboard.
 
-**Scope note — `castnet_events` removed.** The design doc lists `castnet_events` as a P0 connector pulling from the CastNet (chanelops) platform. CastNet is being retired in favour of a new all-in-one solution, *Love World Europe One*. Dropping the connector now avoids two wasted dev-days against a platform that won't exist. When *Love World Europe One* ships, it lands as a brand-new pull connector in Phase 2 (or a point release) — a sibling to `cloudflare_analytics` and `ga4`. **Design-doc section 6 "Launch connector priorities" should be updated** to reflect 4 P0 connectors instead of 5; flag this to the design-doc owner.
+**Scope note — `castnet_events` removed.** The original design listed `castnet_events` as a P0 connector pulling from the CastNet (chanelops) platform. CastNet is being retired in favour of a new all-in-one solution, *Love World Europe One*. Dropping the connector avoided two wasted dev-days against a platform that will not exist. When *Love World Europe One* ships, it lands as a brand-new pull connector in Phase 2 (or a point release) — a sibling to `cloudflare_analytics` and `ga4`.
 
 **Architecture:** Add the metric fact/rollup tables (Phase 0 deferred them) and wire the ingestion pipeline end-to-end — scheduler enqueues pulls, worker invokes connectors, idempotent upsert into `metric_record`, incremental `metric_rollup` refresh via recursive CTE up the hierarchy. Connectors live in a new shared `@lwa/connectors` package so both the API (for credential validation + account discovery) and the worker (for pulling) can import them. Dashboard reads from `metric_rollup` only; the fact table is never read by UI.
 
@@ -19,7 +19,7 @@
 **Related design doc:** `docs/plans/2026-04-20-loveworld-analytics-design.md` — sections 5 (data model), 6 (connector framework), 7 (ingestion pipeline), 9 (dashboard UX), 10.3 (permission matrix), 13 (rollout gate).
 
 **Scope boundary for Phase 1:**
-- **In:** 5 P0 connectors, metric schema, ingestion pipeline wiring, KEK/DEK for connector credentials, hierarchy CRUD UI + API, 2 of the 5 KPI tiles (TV-households + Web), manual entry console, basic source-health listing, `admin:set-password` CLI, Phase 1 gate smoke.
+- **In:** 4 P0 connectors, metric schema, ingestion pipeline wiring, KEK/DEK for connector credentials, hierarchy CRUD UI + API, 2 of the 5 KPI tiles (TV-households + Web), manual entry console, basic source-health listing, `admin:set-password` CLI, Phase 1 gate smoke.
 - **Out (Phase 2+):** adjustment UI, streaming/social/engagement tiles, records drill-down table, anomaly detection UI, PDF export, scheduled reports, weekly digest emails, drag-and-drop hierarchy, OAuth connector flows (YouTube/Meta), tenant/team invite UI. Schema columns for adjustments already exist (added Task 1) so Phase 2 UI lands without migration.
 
 ---
@@ -36,13 +36,13 @@
 | 6 | `cloudflare_analytics` connector (GraphQL) | 2, 3 | ✅ Implemented |
 | 7 | `ga4` connector (service-account JWT) | 2, 3 | ✅ Implemented — contract-suite/tests present for all 4 shipped P0 connectors |
 | 8 | API: connector management + hierarchy CRUD + backfill endpoint + RBAC middleware | 4, 5, 6, 7 | ✅ Implemented |
-| 9 | Hierarchy management UI + tenant switcher root page | 8 | ⏳ Not done — only the Phase 0 tenant shell exists |
-| 10 | Dashboard: `<KpiTile>` + `<PeriodPicker>` + `<ComparisonPicker>` + TV-households + Web tiles | 4, 8 | ⏳ Not done — metrics API exists, dashboard UI does not |
-| 11 | Manual entry UI + source health list + `admin:set-password` CLI + Phase 1 gate smoke script | 5, 8, 9, 10 | ⏳ Not done — API pieces exist, but UI/CLI/gate are still missing |
+| 9 | Hierarchy management UI + tenant switcher root page | 8 | ✅ Implemented |
+| 10 | Dashboard: `<KpiTile>` + `<PeriodPicker>` + `<ComparisonPicker>` + TV-households + Web tiles | 4, 8 | ✅ Implemented |
+| 11 | Manual entry UI + source health list + `admin:set-password` CLI + Phase 1 gate smoke script | 5, 8, 9, 10 | 🚧 Closeout in `docs/plans/2026-04-23-phase-1-closeout.md` |
 
 Each task ends with: `pnpm -w turbo lint typecheck test`, then `git commit`. Phase 1 is done when Task 11 lands on `main`, `phase1:gate` is green in CI, and one LW Europe admin has completed the end-to-end runbook against staging.
 
-**Status audit (2026-04-21):** Tasks 1–8 are already implemented in the repo. Tasks 9–11 remain open. The web app is still at the Phase 0 shell level, while the backend/API/connector/ingestion work for early Phase 1 is largely complete.
+**Status audit (2026-04-23):** Tasks 1–10 are implemented in the repo. Task 11 is being closed through `docs/plans/2026-04-23-phase-1-closeout.md`, which adds the remaining admin password CLI, Phase 1 gate, CI/deploy hardening, and documentation cleanup.
 
 ---
 

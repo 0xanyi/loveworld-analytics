@@ -4,7 +4,7 @@ Multi-tenant cross-platform analytics rollup platform for TV channel networks.
 
 ## Status
 
-**Phase 1 in progress.** Phase 0 (Foundations) shipped; Phase 1 (P0 connectors + first dashboard tiles) is effectively feature-complete for the operator UI. Remaining before Phase 1 closes: `admin:set-password` CLI and the `phase1:gate` reproducible smoke script (tracked in `docs/plans/2026-04-21-phase-1-remainder-finish-gate.md`).
+**Phase 1 production pilot ready after closeout gate passes.** Phase 0 foundations and Phase 1 P0 connector/operator UI scope are implemented. Phase 1 is considered closed only when `pnpm phase1:gate`, workspace verification, build, and Playwright all pass in CI.
 
 - **P0 connectors**: `manual_satellite`, `manual_freeview`, `cloudflare_analytics`, `ga4`
 - **API routes**: auth, `/me`, tenant hierarchy CRUD, connector management, manual entries, metrics board, source health (read-only), backfill trigger
@@ -45,7 +45,8 @@ scripts/
   db-init.sh          Idempotent "create dev database if missing" helper
 
 .github/workflows/
-  ci.yml              Lint · typecheck · test · build · Playwright (Postgres 16 + Redis 7 services)
+  ci.yml              Lint · typecheck · test · build · Phase 1 gate · Playwright
+  images.yml          Build/push GHCR deploy images on push to main
   staging-deploy.yml  Dokploy webhook on push to main
 ```
 
@@ -107,28 +108,23 @@ pnpm db:migrate                   # apply migrations
 pnpm dev                          # runs web (5173) + api (3001) + ingestion via turbo
 ```
 
-### Creating the first admin (Phase 0)
+### Creating the first admin
 
 `pnpm admin:create-tenant` creates a tenant + `user` row + `network_admin`
-membership, but **does not** create a Better Auth login credential. Until
-Phase 1 ships `pnpm admin:set-password`, create the credential via Better
-Auth's sign-up endpoint first, then attach the tenant. With `pnpm dev`
-running in another terminal:
+membership. `pnpm admin:set-password` then creates the Better Auth email/password
+credential for that user. With `pnpm dev` running in another terminal:
 
 ```bash
-# 1. Create user + credential (via Better Auth — uses its own scrypt hasher)
-curl -X POST http://localhost:3001/api/auth/sign-up/email \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"dev@example.com","password":"<pick-a-password>","name":"Dev Admin"}'
-
-# 2. Attach tenant + network_admin membership to that user
 pnpm admin:create-tenant \
   --name "Dev Tenant" \
   --admin-email dev@example.com \
   --admin-name "Dev Admin"
+
+ADMIN_PASSWORD='<temporary-password>' pnpm admin:set-password \
+  --email dev@example.com
 ```
 
-Sign in at <http://localhost:5173/login> with the email + password above.
+Sign in at <http://localhost:5173/login> with the email + temporary password above.
 
 ### Port conflicts
 
@@ -165,6 +161,8 @@ Root (turbo fan-out across the workspace):
 | `pnpm db:migrate` | Apply migrations against `DATABASE_URL` |
 | `pnpm db:generate` | Regenerate Drizzle SQL + snapshot from `packages/db/src/schema` |
 | `pnpm admin:create-tenant` | Create a tenant + admin user (see flags below) |
+| `pnpm admin:set-password` | Set or rotate a Better Auth email/password credential for an existing user |
+| `pnpm phase1:gate` | Reproducible Phase 1 smoke: tenant setup → sign-in → hierarchy → manual connector → non-zero dashboard tile |
 
 Targeted:
 
@@ -186,17 +184,19 @@ pnpm admin:create-tenant \
 ```
 
 Idempotent on slug; safe to re-run. Creates the tenant + user + membership
-rows only — see [Creating the first admin (Phase 0)](#creating-the-first-admin-phase-0)
-above for the full login-credential flow until `pnpm admin:set-password`
-ships in Phase 1.
+rows only — run `pnpm admin:set-password` afterward to set or rotate the Better Auth login credential.
 
 ## Deployment
 
 CI runs on every PR and push to `main`:
 
 - Lint, typecheck, test, build (with Postgres 16 + Redis 7 service containers)
+- `pnpm phase1:gate` against the live CI API service
 - Playwright e2e on `@lwa/web`
+- GHCR image build/push via `.github/workflows/images.yml`
 - Staging auto-deploy via Dokploy webhook (skips gracefully when secrets are absent)
+
+Dokploy staging/production require external secrets for Postgres credentials, `DATABASE_URL`, `AUTH_SECRET`, connector KEK, and SMTP credentials. Web images are environment-specific because the browser API origin is baked into the Vite bundle at build time; server-side SvelteKit fetches use runtime `API_BASE_URL`.
 
 Production requires manual approval in the Dokploy UI.
 
