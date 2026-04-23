@@ -22,6 +22,14 @@ describe("loadEnv", () => {
     }
   });
 
+  it("accepts staging NODE_ENV", () => {
+    const r = loadEnv({ ...VALID, NODE_ENV: "staging" });
+    expect(isOk(r)).toBe(true);
+    if (isOk(r)) {
+      expect(r.value.NODE_ENV).toBe("staging");
+    }
+  });
+
   it("coerces INGESTION_CONCURRENCY from a string env var", () => {
     const r = loadEnv({ ...VALID, INGESTION_CONCURRENCY: "8" });
     expect(isOk(r) && r.value.INGESTION_CONCURRENCY).toBe(8);
