@@ -94,7 +94,11 @@
   const overrides = $derived({ ...hierarchyOverride });
 </script>
 
-<div class="mx-auto max-w-3xl">
+<!-- Page uses the tenant layout's full max-w-7xl width so the header
+     aligns with Dashboard / Source Health / Hierarchy. The entry form
+     itself is constrained further down — long text inputs are harder to
+     scan, so the form card caps at max-w-3xl. -->
+<div>
   <!-- ──────────── Header ──────────── -->
   <section class="rise">
     <div class="border-b border-hairline pb-8">
@@ -102,7 +106,7 @@
       <h1 class="font-display mt-3 text-6xl leading-[0.95] text-ink">
         Manual entry
       </h1>
-      <p class="mt-4 max-w-xl text-[15px] leading-relaxed text-ink-muted">
+      <p class="mt-4 max-w-2xl text-[15px] leading-relaxed text-ink-muted">
         Log a period of viewership directly into the rollup. Entries are attributed to
         the selected hierarchy node and versioned alongside automated ingestion.
       </p>
@@ -123,60 +127,63 @@
       </p>
     </section>
   {:else}
-    <!-- ──────────── Source picker ──────────── -->
-    <section class="mt-10 rise rise-1">
-      <label class="block max-w-md">
-        <span class="eyebrow">Source</span>
-        <div class="relative mt-2">
-          <select
-            class="field-underline appearance-none pr-6"
-            bind:value={selectedKey}
-            aria-label="Source"
-          >
-            {#each manualConnectors as connector (connector.key)}
-              <option value={connector.key}>{connector.name}</option>
-            {/each}
-          </select>
-          <Chevron class="absolute right-0 top-1/2 -translate-y-1/2" />
-        </div>
-      </label>
-    </section>
-
-    <!-- ──────────── Entry form ──────────── -->
-    {#if selectedConnector?.entrySchema}
-      <section
-        class="mt-10 border border-hairline bg-surface p-8 rise rise-2 lg:p-10"
-      >
-        <p class="eyebrow mb-6">Entry · {selectedConnector.name}</p>
-        {#key formInstance}
-          <FormFromSchema
-            schema={selectedConnector.entrySchema as EntryJsonSchema}
-            overrides={overrides}
-            onSubmit={handleEntrySubmit}
-            submitLabel="Submit"
-          />
-        {/key}
+    <!-- Interactive controls (source picker + form) are constrained so
+         individual inputs stay a comfortable scan width on wide screens.
+         Left-aligned to match the header; not centred. -->
+    <div class="max-w-3xl">
+      <!-- ──────────── Source picker ──────────── -->
+      <section class="mt-10 rise rise-1">
+        <label class="block max-w-md">
+          <span class="eyebrow">Source</span>
+          <div class="relative mt-2">
+            <select
+              class="field-underline appearance-none pr-6"
+              bind:value={selectedKey}
+              aria-label="Source"
+            >
+              {#each manualConnectors as connector (connector.key)}
+                <option value={connector.key}>{connector.name}</option>
+              {/each}
+            </select>
+            <Chevron class="absolute right-0 top-1/2 -translate-y-1/2" />
+          </div>
+        </label>
       </section>
-    {/if}
 
-    <!-- ──────────── Result banners ──────────── -->
-    {#if form?.success}
-      <p
-        class="mt-8 flex items-center gap-3 border-l-2 border-positive bg-positive/6 px-4 py-3 text-sm font-medium text-positive rise"
-        role="status"
-      >
-        <span class="inline-block h-1.5 w-1.5 rounded-full bg-positive" aria-hidden="true"></span>
-        Entry saved
-      </p>
-    {/if}
+      <!-- ──────────── Entry form ──────────── -->
+      {#if selectedConnector?.entrySchema}
+        <section class="mt-10 border border-hairline bg-surface p-8 rise rise-2 lg:p-10">
+          <p class="eyebrow mb-6">Entry · {selectedConnector.name}</p>
+          {#key formInstance}
+            <FormFromSchema
+              schema={selectedConnector.entrySchema as EntryJsonSchema}
+              overrides={overrides}
+              onSubmit={handleEntrySubmit}
+              submitLabel="Submit"
+            />
+          {/key}
+        </section>
+      {/if}
 
-    {#if form?.error}
-      <p
-        class="mt-8 border-l-2 border-negative bg-negative/6 px-4 py-3 text-sm text-negative rise"
-        role="alert"
-      >
-        {form.error}
-      </p>
-    {/if}
+      <!-- ──────────── Result banners ──────────── -->
+      {#if form?.success}
+        <p
+          class="mt-8 flex items-center gap-3 border-l-2 border-positive bg-positive/6 px-4 py-3 text-sm font-medium text-positive rise"
+          role="status"
+        >
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-positive" aria-hidden="true"></span>
+          Entry saved
+        </p>
+      {/if}
+
+      {#if form?.error}
+        <p
+          class="mt-8 border-l-2 border-negative bg-negative/6 px-4 py-3 text-sm text-negative rise"
+          role="alert"
+        >
+          {form.error}
+        </p>
+      {/if}
+    </div>
   {/if}
 </div>
