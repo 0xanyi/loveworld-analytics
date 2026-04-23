@@ -45,10 +45,18 @@ services:
       LWA_KEK_CURRENT: v1
       LWA_KEK_V1_FILE: /run/secrets/connector_kek
       API_PORT: "3001"
+      SMTP_HOST: smtp.example.com
+      SMTP_PORT: "587"
+      SMTP_SECURE: "false"
+      SMTP_USER_FILE: /run/secrets/smtp_user
+      SMTP_PASS_FILE: /run/secrets/smtp_pass
+      SMTP_FROM: no-reply@loveworld.example
     secrets:
       - database_url
       - auth_secret
       - connector_kek
+      - smtp_user
+      - smtp_pass
     depends_on:
       - postgres
       - redis
@@ -91,11 +99,11 @@ services:
         window: 120s
 
   web:
-    image: ghcr.io/0xanyi/loveworld-analytics-web:${DEPLOY_SHA:?DEPLOY_SHA must be set}
+    image: ghcr.io/0xanyi/loveworld-analytics-web-production:${DEPLOY_SHA:?DEPLOY_SHA must be set}
     environment:
       NODE_ENV: production
       PORT: "3000"
-      VITE_API_BASE_URL: https://api.app.loveworld-analytics.example
+      API_BASE_URL: http://api:3001
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/login || exit 1"]
       interval: 30s
@@ -112,11 +120,13 @@ services:
         window: 120s
 
 secrets:
-  pg_user:       { external: true }
-  pg_password:   { external: true }
-  database_url:  { external: true }
-  auth_secret:   { external: true }
-  connector_kek: { external: true }
+  pg_user:       { external: true, name: lwa_production_pg_user }
+  pg_password:   { external: true, name: lwa_production_pg_password }
+  database_url:  { external: true, name: lwa_production_database_url }
+  auth_secret:   { external: true, name: lwa_production_auth_secret }
+  connector_kek: { external: true, name: lwa_production_connector_kek }
+  smtp_user:     { external: true, name: lwa_production_smtp_user }
+  smtp_pass:     { external: true, name: lwa_production_smtp_pass }
 
 volumes:
   postgres-data:
