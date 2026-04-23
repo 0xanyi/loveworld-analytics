@@ -202,19 +202,24 @@
             </p>
           </div>
 
-          <!-- Switch tenant (always available; landing page handles the list). -->
-          <a
-            href="/"
-            role="menuitem"
-            onclick={closeUserMenu}
-            class="flex items-center justify-between px-5 py-3 text-[12px] font-medium uppercase tracking-[0.16em] text-ink-muted transition-colors hover:bg-ink/4 hover:text-ink focus-visible:outline-none focus-visible:bg-ink/4 focus-visible:text-ink"
-          >
-            <span>Switch tenant</span>
-            <span aria-hidden="true" class="font-mono text-[11px]">→</span>
-          </a>
+          <!-- Switch tenant — only exposed when the user belongs to more
+               than one tenant. For a single-tenant user the link would
+               take them to a one-entry selector they're already inside. -->
+          {#if (data.membershipCount ?? 1) > 1}
+            <a
+              href="/"
+              role="menuitem"
+              onclick={closeUserMenu}
+              class="flex items-center justify-between px-5 py-3 text-[12px] font-medium uppercase tracking-[0.16em] text-ink-muted transition-colors hover:bg-ink/4 hover:text-ink focus-visible:outline-none focus-visible:bg-ink/4 focus-visible:text-ink"
+            >
+              <span>Switch tenant</span>
+              <span aria-hidden="true" class="font-mono text-[11px]">→</span>
+            </a>
+          {/if}
 
           <!-- Sign out — separated with a hairline so it reads as
-               destructive / terminal relative to the nav items above. -->
+               destructive / terminal relative to the identity block
+               above (or the Switch-tenant action when shown). -->
           <div class="border-t border-hairline">
             <button
               type="button"

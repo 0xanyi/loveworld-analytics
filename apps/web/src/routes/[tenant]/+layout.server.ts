@@ -30,5 +30,8 @@ export const load: LayoutServerLoad = async ({ params, cookies }) => {
       email: me.user.email,
       name: me.user.name,
     },
+    // Used by the account menu to decide whether to expose the
+    // "Switch tenant" action — pointless for single-tenant users.
+    membershipCount: me.memberships.length,
   };
 };
